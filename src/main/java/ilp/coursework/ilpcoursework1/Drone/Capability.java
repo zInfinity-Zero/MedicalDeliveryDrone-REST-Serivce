@@ -1,5 +1,7 @@
 package ilp.coursework.ilpcoursework1.Drone;
 
+import ilp.coursework.ilpcoursework1.CW3.BatteryModel;
+
 public class Capability {
     private boolean cooling;
     private boolean heating;
@@ -32,4 +34,21 @@ public class Capability {
 
     public double getCostFinal() { return costFinal; }
     public void setCostFinal(double costFinal) { this.costFinal = costFinal; }
+
+
+    /// CW3 extension
+    private BatteryModel battery;
+    private double cruiseSpeed;        // m/s in calm conditions
+    private double windSensitivity;    // Speed reduction factor per m/s wind
+
+    public BatteryModel getBattery() { return battery; }
+    public void setBattery(BatteryModel battery) { this.battery = battery; }
+
+    public double getCruiseSpeed() { return cruiseSpeed; }
+    public void setCruiseSpeed(double cruiseSpeed) { this.cruiseSpeed = cruiseSpeed; }
+
+    public double getWindSensitivity() { return windSensitivity; }
+    public void setWindSensitivity(double windSensitivity) {
+        this.windSensitivity = windSensitivity;
+}
 }
