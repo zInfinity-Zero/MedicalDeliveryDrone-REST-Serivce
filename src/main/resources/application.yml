@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: ilpcoursework1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"   # or health if you only want health
+  endpoint:
+    health:
+      show-details: always
+
+server:
+  port: 8080
