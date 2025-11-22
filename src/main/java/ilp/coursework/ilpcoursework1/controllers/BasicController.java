@@ -147,7 +147,7 @@ public class BasicController {
     public ResponseEntity<DeliveryPathDTO.CalcResult> calcDeliveryPath(
             @RequestBody List<MedDispatchRec> dispatches) {
         try {
-            DeliveryPathDTO.CalcResult result = dS.calcDeliveryPath(dispatches);
+            DeliveryPathDTO.CalcResult result = dS.calcDeliveryPathCW2(dispatches);
 
             return ResponseEntity.ok(result);
         }
@@ -176,6 +176,12 @@ public class BasicController {
     public ResponseEntity<String> testBatteryPath() {
         // Setup test drone
         return dS.testing();
+    }
+
+    @GetMapping("/test")
+    public ResponseEntity<String> test() {
+        // Setup test drone
+        return dS.testSchedulerDebug();
     }
 
 
