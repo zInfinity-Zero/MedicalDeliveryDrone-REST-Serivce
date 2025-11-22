@@ -6,7 +6,6 @@ public class BatteryModel {
     private double capacity;                    // Wh
     private double baseConsumptionPerStep;      // Wh per step
     private double consumptionPayloadFactor;    // Additional Wh per unit payload
-    private double consumptionWindFactor;       // Wh per m/s headwind
     private double degradationFactor;           // Degradation multiplier (0-1)
     private double currentCharge;               // Runtime state (Wh)
 
@@ -28,11 +27,6 @@ public class BatteryModel {
     public double getConsumptionPayloadFactor() { return consumptionPayloadFactor; }
     public void setConsumptionPayloadFactor(double consumptionPayloadFactor) {
         this.consumptionPayloadFactor = consumptionPayloadFactor;
-    }
-
-    public double getConsumptionWindFactor() { return consumptionWindFactor; }
-    public void setConsumptionWindFactor(double consumptionWindFactor) {
-        this.consumptionWindFactor = consumptionWindFactor;
     }
 
     public double getDegradationFactor() { return degradationFactor; }

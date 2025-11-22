@@ -1,10 +1,13 @@
 package ilp.coursework.ilpcoursework1.Service;
 
+import ilp.coursework.ilpcoursework1.CW3.BatteryModel;
+import ilp.coursework.ilpcoursework1.CW3.BatteryService;
 import ilp.coursework.ilpcoursework1.Drone.*;
 import ilp.coursework.ilpcoursework1.ILPService;
 import ilp.coursework.ilpcoursework1.PosandDis.Position;
 import ilp.coursework.ilpcoursework1.Util.DeliveryPathDTO;
 import ilp.coursework.ilpcoursework1.Util.MedDispatchRec;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 
@@ -18,6 +21,7 @@ public class DroneService {
 
     private final ILPService ilp;
     private final Services s;
+    private final BatteryService batteryService;
 
     private static final double STEP = 0.00015;
     private static final double EPS = 1e-12;
@@ -28,9 +32,10 @@ public class DroneService {
         for (int i = 0; i < 16; i++) ALLOWED_ANGLES[i] = i * 22.5;
     }
 
-    public DroneService(ILPService ilpService, Services s) {
+    public DroneService(ILPService ilpService, Services s, BatteryService batteryService) {
         this.ilp = ilpService;
         this.s = s;
+        this.batteryService = batteryService;
     }
 
     // fetch each time
@@ -1901,6 +1906,360 @@ public class DroneService {
         geo.put("coordinates", coords);
 
         return geo;
+    }
+
+
+    ///
+    ///
+    /// * CW3
+    ///
+    ///
+    ///
+
+    /**
+     * A* pathfinding with battery consumption tracking
+     * Returns null if no valid path exists that satisfies battery constraints
+     */
+    public PathWithBatteryResult aStarPathWithBattery(
+            DeliveryPathDTO.LngLat start,
+            DeliveryPathDTO.LngLat goal,
+            Drone drone,
+            double currentBatteryCharge,
+            double payloadFraction,
+            List<RestrictedZone> restrictedZones) {
+
+        // Node that tracks position AND battery state
+        class BatteryNode {
+            final DeliveryPathDTO.LngLat position;
+            final double batteryRemaining;
+            final double gCost;  // actual cost (number of steps)
+            final double fCost;  // g + heuristic
+
+            BatteryNode(DeliveryPathDTO.LngLat pos, double battery, double g, double f) {
+                this.position = pos;
+                this.batteryRemaining = battery;
+                this.gCost = g;
+                this.fCost = f;
+            }
+        }
+
+        Function<DeliveryPathDTO.LngLat, String> key = pos ->
+                Math.round(pos.getLng() * 1_000_000) + ":" +
+                        Math.round(pos.getLat() * 1_000_000);
+
+        PriorityQueue<BatteryNode> openSet = new PriorityQueue<>(
+                Comparator.comparingDouble(n -> n.fCost));
+
+        Map<String, BatteryNode> bestNodes = new HashMap<>();
+        Map<String, DeliveryPathDTO.LngLat> cameFrom = new HashMap<>();
+
+        BatteryNode startNode = new BatteryNode(
+                start,
+                currentBatteryCharge,
+                0,
+                heuristic(start, goal)
+        );
+
+        String startKey = key.apply(start);
+        openSet.add(startNode);
+        bestNodes.put(startKey, startNode);
+
+        BatteryModel battery = drone.getCapability().getBattery();
+
+        while (!openSet.isEmpty()) {
+            BatteryNode current = openSet.poll();
+            String currentKey = key.apply(current.position);
+
+            // Goal check
+            if (euclid(current.position.getLng(), current.position.getLat(),
+                    goal.getLng(), goal.getLat()) <= STEP) {
+
+                List<DeliveryPathDTO.LngLat> path = reconstructPath(
+                        cameFrom, current.position, key);
+
+                return new PathWithBatteryResult(
+                        path,
+                        current.batteryRemaining,
+                        currentBatteryCharge - current.batteryRemaining
+                );
+            }
+
+            // Explore neighbors
+            for (double angleDeg : ALLOWED_ANGLES) {
+                double rad = Math.toRadians(angleDeg);
+                DeliveryPathDTO.LngLat neighbor = new DeliveryPathDTO.LngLat(
+                        current.position.getLng() + Math.cos(rad) * STEP,
+                        current.position.getLat() + Math.sin(rad) * STEP
+                );
+
+                String neighborKey = key.apply(neighbor);
+
+                // Check restricted zones
+                if (isPointInAnyRestricted(neighbor.getLng(), neighbor.getLat(), restrictedZones)) {
+                    continue;
+                }
+
+                // Calculate battery consumption for this step
+                double stepConsumption = batteryService.calculateStepConsumption(
+                        battery,
+                        payloadFraction
+                );
+
+                stepConsumption = batteryService.applyDegradation(
+                        stepConsumption,
+                        battery.getDegradationFactor(),
+                        payloadFraction
+                );
+
+                double newBattery = current.batteryRemaining - stepConsumption;
+
+                // Battery constraint - reject if insufficient
+                if (newBattery < 0) {
+                    continue;
+                }
+
+                double newGCost = current.gCost + 1;  // each step costs 1
+                double newFCost = newGCost + heuristic(neighbor, goal);
+
+                // Check if this is a better path to this neighbor
+                BatteryNode existing = bestNodes.get(neighborKey);
+                if (existing == null || newGCost < existing.gCost) {
+                    BatteryNode neighborNode = new BatteryNode(
+                            neighbor, newBattery, newGCost, newFCost
+                    );
+
+                    bestNodes.put(neighborKey, neighborNode);
+                    cameFrom.put(neighborKey, current.position);
+                    openSet.add(neighborNode);
+                }
+            }
+        }
+
+        return null; // No valid path found
+    }
+
+    // Helper class for return value
+    public static class PathWithBatteryResult {
+        public final List<DeliveryPathDTO.LngLat> path;
+        public final double batteryRemaining;
+        public final double batteryUsed;
+
+        public PathWithBatteryResult(List<DeliveryPathDTO.LngLat> path,
+                                     double remaining,
+                                     double used) {
+            this.path = path;
+            this.batteryRemaining = remaining;
+            this.batteryUsed = used;
+        }
+    }
+
+    // Reconstruct path helper (reuse your existing one or use this)
+    private List<DeliveryPathDTO.LngLat> reconstructPath(
+            Map<String, DeliveryPathDTO.LngLat> cameFrom,
+            DeliveryPathDTO.LngLat current,
+            Function<DeliveryPathDTO.LngLat, String> key) {
+
+        List<DeliveryPathDTO.LngLat> path = new ArrayList<>();
+        DeliveryPathDTO.LngLat node = current;
+
+        while (node != null) {
+            path.add(node);
+            node = cameFrom.get(key.apply(node));
+        }
+
+        Collections.reverse(path);
+        return path;
+    }
+
+    private double heuristic(DeliveryPathDTO.LngLat a, DeliveryPathDTO.LngLat b) {
+        return euclid(a.getLng(), a.getLat(), b.getLng(), b.getLat()) / STEP;
+    }
+
+
+    public DeliveryPathDTO.CalcResult calcDeliveryPathNew(List<MedDispatchRec> dispatches) {
+
+        if (dispatches == null) {
+            dispatches = Collections.emptyList();
+        }
+
+        List<Drone> drones = loadMergedDrones();
+        List<ServicePoint> sps = ilp.fetchServicePoints();
+        List<RestrictedZone> zones = ilp.fetchRestrictedAreas();
+
+        Map<Integer, ServicePoint> spById = sps.stream()
+                .collect(Collectors.toMap(ServicePoint::getId, sp -> sp));
+
+        Map<Integer, MedDispatchRec> unassigned = dispatches.stream()
+                .collect(Collectors.toMap(MedDispatchRec::getId, d -> d));
+
+        DeliveryPathDTO.CalcResult result = new DeliveryPathDTO.CalcResult();
+        int totalMoves = 0;
+        double totalCost = 0.0;
+        double totalBatteryUsed = 0.0;  // Track this!
+
+        Map<Integer, List<Drone>> dronesBySp =
+                drones.stream().collect(Collectors.groupingBy(Drone::getServicePointId));
+
+        for (Map.Entry<Integer, List<Drone>> spEntry : dronesBySp.entrySet()) {
+
+            int spId = spEntry.getKey();
+            ServicePoint sp = spById.get(spId);
+            if (sp == null) continue;
+
+            List<Drone> dronesAtSp = spEntry.getValue();
+
+            for (Drone drone : dronesAtSp) {
+
+                Capability cap = drone.getCapability();
+                BatteryModel battery = cap.getBattery();
+
+                if (battery == null) {
+                    // Fallback to old behavior if no battery model
+                    continue;
+                }
+
+                double currentBattery = battery.getCapacity();  // Start full
+
+                DeliveryPathDTO.DronePath dronePath = new DeliveryPathDTO.DronePath();
+                dronePath.setDroneId(drone.getId());
+
+                while (true) {
+                    if (unassigned.isEmpty()) break;
+
+                    DeliveryPathDTO.LngLat spPos =
+                            new DeliveryPathDTO.LngLat(sp.getPosition().getLng(),
+                                    sp.getPosition().getLat());
+
+                    // Find feasible deliveries
+                    double finalCurrentBattery = currentBattery;
+                    List<MedDispatchRec> feasible = unassigned.values().stream()
+                            .filter(rec -> canHandle(drone, rec))
+                            .filter(rec -> {
+                                // Quick battery estimate
+                                double payloadFraction = rec.getRequirements().getCapacity()
+                                        / cap.getCapacity();
+                                DeliveryPathDTO.LngLat dest = toLngLat(rec);
+
+                                double estimatedSteps = estimateMoves(spPos, dest) * 2;
+                                double estimatedConsumption = estimatedSteps *
+                                        batteryService.calculateStepConsumption(battery, payloadFraction);
+
+                                return finalCurrentBattery >= estimatedConsumption;
+                            })
+                            .collect(Collectors.toList());
+
+                    if (feasible.isEmpty()) {
+                        break;
+                    }
+
+                    // Pick nearest
+                    MedDispatchRec chosen = feasible.stream()
+                            .min(Comparator.comparingInt(rec -> estimateMoves(spPos, toLngLat(rec))))
+                            .orElseThrow();
+
+                    DeliveryPathDTO.LngLat dest = toLngLat(chosen);
+                    double payloadFraction = chosen.getRequirements().getCapacity()
+                            / cap.getCapacity();
+
+                    // Outbound with battery tracking
+                    PathWithBatteryResult outPath = aStarPathWithBattery(
+                            spPos, dest, drone, currentBattery, payloadFraction, zones);
+
+                    if (outPath == null) {
+                        unassigned.remove(chosen.getId());
+                        continue;
+                    }
+
+                    List<DeliveryPathDTO.LngLat> fullPath = new ArrayList<>(outPath.path);
+                    currentBattery = outPath.batteryRemaining;
+
+                    // Hover
+                    DeliveryPathDTO.LngLat last = fullPath.get(fullPath.size() - 1);
+                    fullPath.add(last);  // hover duplicate
+
+                    // Return path (empty drone, so payloadFraction = 0)
+                    PathWithBatteryResult backPath = aStarPathWithBattery(
+                            last, spPos, drone, currentBattery, 0.0, zones);
+
+                    if (backPath != null) {
+                        for (int i = 1; i < backPath.path.size(); i++) {
+                            fullPath.add(backPath.path.get(i));
+                        }
+                        currentBattery = backPath.batteryRemaining;
+                    }
+
+                    int used = fullPath.size();
+                    totalMoves += used;
+                    totalBatteryUsed += (outPath.batteryUsed +
+                            (backPath != null ? backPath.batteryUsed : 0));
+
+                    DeliveryPathDTO.DeliveryPath dp = new DeliveryPathDTO.DeliveryPath();
+                    dp.setDeliveryId(chosen.getId());
+                    dp.setFlightPath(fullPath);
+                    dronePath.getDeliveries().add(dp);
+
+                    unassigned.remove(chosen.getId());
+
+                    // Recharge for next delivery
+                    currentBattery = battery.getCapacity();
+                }
+
+                if (!dronePath.getDeliveries().isEmpty()) {
+                    // Calculate cost (you can add battery cost here if needed)
+                    double droneCost = cap.getCostInitial() +
+                            totalMoves * cap.getCostPerMove() +
+                            cap.getCostFinal();
+                    totalCost += droneCost;
+
+                    result.getDronePaths().add(dronePath);
+                }
+
+                if (unassigned.isEmpty()) break;
+            }
+
+            if (unassigned.isEmpty()) break;
+        }
+
+        result.setTotalMoves(totalMoves);
+        result.setTotalCost(totalCost);
+        return result;
+    }
+
+    public ResponseEntity<String> testing(){
+
+        Drone drone = new Drone();
+        drone.setId("test-drone");
+
+        Capability cap = new Capability();
+        cap.setCapacity(10.0);  // 10kg cargo
+
+        BatteryModel battery = new BatteryModel();
+        battery.setCapacity(100.0);  // 100 Wh
+        battery.setBaseConsumptionPerStep(0.5);
+        battery.setConsumptionPayloadFactor(0.2);
+        battery.setDegradationFactor(0.1);
+        battery.setCurrentCharge(100.0);
+
+        cap.setBattery(battery);
+        drone.setCapability(cap);
+
+        // Test path
+        DeliveryPathDTO.LngLat start = new DeliveryPathDTO.LngLat(-3.186, 55.944);
+        DeliveryPathDTO.LngLat goal = new DeliveryPathDTO.LngLat(-3.188, 55.946);
+
+        PathWithBatteryResult result = aStarPathWithBattery(
+                start, goal, drone, 100.0, 0.5,
+                fetchRestrictedAreas());
+
+        if (result != null) {
+            return ResponseEntity.ok(
+                    "Path found! Steps: " + result.path.size() +
+                            ", Battery used: " + result.batteryUsed + " Wh" +
+                            ", Battery remaining: " + result.batteryRemaining + " Wh"
+            );
+        } else {
+            return ResponseEntity.ok("No path found (battery insufficient)");
+        }
     }
 
 

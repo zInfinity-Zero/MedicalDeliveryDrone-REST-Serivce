@@ -171,5 +171,12 @@ public class BasicController {
     }
 
 
+    /// CW3
+    @GetMapping("/test/battery-path")
+    public ResponseEntity<String> testBatteryPath() {
+        // Setup test drone
+        return dS.testing();
+    }
+
 
 }
