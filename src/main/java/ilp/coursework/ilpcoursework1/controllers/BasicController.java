@@ -184,5 +184,16 @@ public class BasicController {
         return dS.testSchedulerDebug();
     }
 
+    @GetMapping("/testcharging")
+    public ResponseEntity<String> testCharging() {
+        // Setup test drone
+        return dS.testChargingScenario();
+    }
+
+    @GetMapping("/testmultideliveries")
+    public ResponseEntity<String> testMultiDeliveries() {
+        // Setup test drone
+        return dS.testMultipleDeliveriesWithCharging();
+    }
 
 }
