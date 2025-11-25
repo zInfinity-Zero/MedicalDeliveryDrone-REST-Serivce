@@ -196,4 +196,16 @@ public class BasicController {
         return dS.testMultipleDeliveriesWithCharging();
     }
 
+    @GetMapping("/testmultidrones")
+    public ResponseEntity<String> testMultiDrones() {
+        // Setup test drone
+        return dS.testTwoDronesMultipleDeliveries();
+    }
+
+    @GetMapping("/testnodrones")
+    public ResponseEntity<String> tsetNoDrones() {
+        // Setup test drone
+        return dS.testNoAvailableDrones();
+    }
+
 }
