@@ -203,9 +203,28 @@ public class BasicController {
     }
 
     @GetMapping("/testnodrones")
-    public ResponseEntity<String> tsetNoDrones() {
+    public ResponseEntity<String> testNoDrones() {
         // Setup test drone
         return dS.testNoAvailableDrones();
+    }
+
+    @PostMapping("/calcDeliveryPathWithScheduling")
+    public ResponseEntity<DroneService.EnhancedPlanResult> calcDeliveryPathWithScheduling(
+            @RequestBody List<MedDispatchRec> dispatches) {
+        try {
+            DroneService.EnhancedPlanResult result =
+                    dS.calcDeliveryPathWithScheduling(dispatches,true);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @GetMapping("/testpriority")
+    public ResponseEntity<String> testPriority() {
+        // Setup test drone
+        return dS.testPriorityDeliveries();
     }
 
 }

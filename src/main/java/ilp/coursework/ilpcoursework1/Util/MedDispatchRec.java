@@ -77,4 +77,16 @@ public class MedDispatchRec {
     public Requirements getRequirements() {return requirements;}
     public void setRequirements(Requirements requirements) {this.requirements = requirements;}
 
+    //CW3
+    private boolean important = false;
+
+    public Boolean getImportant() { return important; }
+    public void setImportant(Boolean important) { this.important = important; }
+
+    // Helper method for null-safe check
+    public boolean isImportant() {
+        return Boolean.TRUE.equals(important);
+    }
+
+
 }

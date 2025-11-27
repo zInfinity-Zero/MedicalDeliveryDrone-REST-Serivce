@@ -267,13 +267,13 @@ public class DroneService {
 
         BatteryModel bm = new BatteryModel();
         bm.setCapacity(100.0);
-        bm.setBaseConsumptionPerStep(0.05);
+        bm.setBaseConsumptionPerStep(0.5);
         bm.setConsumptionPayloadFactor(0.2);
         bm.setDegradationFactor(0.1);
         bm.setCurrentCharge(100.0);
 
         cap.setBattery(bm);
-        cap.setCruiseSpeed(0.000015);     // lnglat speed
+        cap.setCruiseSpeed(0.00015);     // lnglat speed
 
         d.setCapability(cap);
         d.setServicePointId(1);       // Attach to SP 1 (Appleton Tower)
@@ -3494,6 +3494,9 @@ public class DroneService {
 
         // For tie-breaking (we primarily compare departureTime)
         LocalDateTime totalReadyTime;
+        double batteryEfficiency;      // Battery used per km (lower is better)
+        double speedScore;             // How fast delivery completes (lower time is better)
+        double totalDeliveryTime;      // From now until returned (minutes)
 
 
         //from old AssignmentOption to not error old CalcDelivery
@@ -3503,7 +3506,7 @@ public class DroneService {
     }
 
 
-    public EnhancedPlanResult calcDeliveryPathWithScheduling(List<MedDispatchRec> dispatches) {
+    public EnhancedPlanResult calcDeliveryPathWithScheduling(List<MedDispatchRec> dispatches, boolean twoDrones) {
 
         if (dispatches == null || dispatches.isEmpty()) {
             return new EnhancedPlanResult();
@@ -3513,6 +3516,9 @@ public class DroneService {
         List<Drone> drones = loadMergedDrones();
         List<ServicePoint> sps = ilp.fetchServicePoints();
         List<RestrictedZone> zones = ilp.fetchRestrictedAreas();
+        if (!twoDrones){
+            drones.remove(1); //removing TEST2 for testing
+        }
 
         Map<Integer, ServicePoint> spById = sps.stream()
                 .collect(Collectors.toMap(ServicePoint::getId, sp -> sp));
@@ -3677,6 +3683,7 @@ public class DroneService {
                             }
                         }
 
+
                         // Time after active charging
                         LocalDateTime afterChargeTime = earliestStart.plusMinutes(
                                 (long) Math.ceil(activeChargeMinutes));
@@ -3690,12 +3697,19 @@ public class DroneService {
                         double roughFlightOutMinutes = estMovesOneWay * timePerStepSec / 60.0;
                         double totalFlightMinutes = roughFlightOutMinutes * 2.0;
 
-                        // From earliestStart, how long is the job (charging + queue + flight)
-                        double jobMinutesFromEarliestStart =
-                                activeChargeMinutes + queueDelay + totalFlightMinutes;
+
+                        // ✅ NEW: Calculate efficiency metrics
+                        double batteryEfficiency = estimatedConsumption / (estMovesOneWay > 0 ? estMovesOneWay : 1);
+
+                        // Speed score: total time from now until delivery complete
+                        // Total flight time in minutes (round trip)
+                        double flightTimeMinutes = (estMovesOneWay * 2 * timePerStepSec) / 60.0;
+
+                        double totalDeliveryTime =  activeChargeMinutes + queueDelay + flightTimeMinutes;
+
 
                         boolean fits = schedulingService.fitsInAvailability(
-                                drone, earliestStart, jobMinutesFromEarliestStart);
+                                drone, earliestStart, totalDeliveryTime);
 
                         if (!fits) {
                             System.out.println("    ✗ Does not fit availability window");
@@ -3720,12 +3734,16 @@ public class DroneService {
                         opt.queueDelayMinutes = queueDelay;
                         opt.departureTime = departureTime;
                         opt.totalReadyTime = readyTime;
-
+                        opt.batteryEfficiency = batteryEfficiency;
+                        opt.speedScore = totalDeliveryTime;
+                        opt.totalDeliveryTime = totalDeliveryTime;
                         allOptions.add(opt);
 
                         System.out.println("    ✓ Option: Drone " + drone.getId() +
                                 " can do delivery " + rec.getId() +
                                 " depart at " + departureTime +
+                                " | Battery efficiency: " + String.format("%.2f", batteryEfficiency) +
+                                " | Speed: " + String.format("%.1f", totalDeliveryTime) + " min" +
                                 " after " + String.format("%.2f", activeChargeMinutes) +
                                 " min active charge, queue " + queueDelay + " min");
                     }
@@ -3738,8 +3756,67 @@ public class DroneService {
                 break;
             }
 
-            // Pick the best option: earliest departure, then shortest active charge
-            AssignmentOption best = allOptions.stream()
+//            // Pick the best option: earliest departure, then shortest active charge
+//            AssignmentOption best = allOptions.stream()
+//                    .min(Comparator
+//                            .comparing((AssignmentOption o) -> o.departureTime)
+//                            .thenComparingDouble(o -> o.activeChargeMinutes))
+//                    .orElseThrow();
+//
+//
+//            Drone drone = best.drone;
+//            MedDispatchRec chosen = best.delivery;
+//            ServicePoint sp = best.servicePoint;
+
+            AssignmentOption best;
+
+// Group options by delivery
+            Map<Integer, List<AssignmentOption>> optionsByDelivery = allOptions.stream()
+                    .collect(Collectors.groupingBy(o -> o.delivery.getId()));
+
+// Process each delivery and pick best drone for it
+            Map<Integer, AssignmentOption> bestPerDelivery = new HashMap<>();
+
+            for (Map.Entry<Integer, List<AssignmentOption>> entry : optionsByDelivery.entrySet()) {
+                int deliveryId = entry.getKey();
+                List<AssignmentOption> candidatesForDelivery = entry.getValue();
+
+                if (candidatesForDelivery.isEmpty()) continue;
+
+                MedDispatchRec delivery = candidatesForDelivery.get(0).delivery;
+                boolean isImportant = delivery.isImportant();
+
+                AssignmentOption bestForThisDelivery;
+
+                if (isImportant) {
+                    // ✅ IMPORTANT: Prioritize SPEED (fastest delivery time)
+                    System.out.println("📍 Delivery " + deliveryId + " is IMPORTANT - prioritizing speed");
+                    bestForThisDelivery = candidatesForDelivery.stream()
+                            .min(Comparator
+                                    .comparingDouble((AssignmentOption o) -> o.totalDeliveryTime)  // Fastest first
+                                    .thenComparing(o -> o.departureTime))  // Earlier departure as tiebreaker
+                            .orElseThrow();
+
+                    System.out.println("   → Selected " + bestForThisDelivery.drone.getId() +
+                            " (fastest: " + String.format("%.1f", bestForThisDelivery.totalDeliveryTime) + " min)");
+                } else {
+                    // ✅ NORMAL: Prioritize EFFICIENCY (lowest battery consumption)
+                    System.out.println("📦 Delivery " + deliveryId + " is NORMAL - prioritizing efficiency");
+                    bestForThisDelivery = candidatesForDelivery.stream()
+                            .min(Comparator
+                                    .comparingDouble((AssignmentOption o) -> o.batteryEfficiency)  // Most efficient first
+                                    .thenComparing(o -> o.departureTime))  // Earlier departure as tiebreaker
+                            .orElseThrow();
+
+                    System.out.println("   → Selected " + bestForThisDelivery.drone.getId() +
+                            " (most efficient: " + String.format("%.2f", bestForThisDelivery.batteryEfficiency) + " Wh/dist)");
+                }
+
+                bestPerDelivery.put(deliveryId, bestForThisDelivery);
+            }
+
+// ✅ From all the best-per-delivery options, pick the one with earliest departure
+            best = bestPerDelivery.values().stream()
                     .min(Comparator
                             .comparing((AssignmentOption o) -> o.departureTime)
                             .thenComparingDouble(o -> o.activeChargeMinutes))
@@ -3749,9 +3826,12 @@ public class DroneService {
             MedDispatchRec chosen = best.delivery;
             ServicePoint sp = best.servicePoint;
 
-            System.out.println("\n✓✓✓ BEST CHOICE: Drone " + drone.getId() +
+            String priorityLabel = chosen.isImportant() ? "⚡ URGENT" : "📦 NORMAL";
+            System.out.println("\n✓✓✓ BEST CHOICE (" + priorityLabel + "): Drone " + drone.getId() +
                     " → Delivery " + chosen.getId() +
-                    " depart at " + best.departureTime);
+                    " depart at " + best.departureTime +
+                    " | Battery: " + String.format("%.2f", best.estimatedConsumption) + " Wh" +
+                    " | Time: " + String.format("%.1f", best.totalDeliveryTime) + " min");
 
             // Execute this mission using the stored option info
 
@@ -3780,7 +3860,9 @@ public class DroneService {
                 currentBattery = Math.min(currentBattery, drone.getCapability().getBattery().getCapacity());
             }
             //sync to earliest start
-            currentTime = best.earliestStart;
+            if (best.earliestStart.isAfter(currentTime)) {
+                currentTime = best.earliestStart;
+            }
 
             // Queue delay
             double queueDelay = schedulingService.calculateQueueDelay(sp, currentTime, 0);
@@ -3998,7 +4080,7 @@ public class DroneService {
             // PRINT BEFORE CALL
             //dbg.append("Battery before schedule=").append(battery.getCurrentCharge()).append("\n");
 
-            EnhancedPlanResult plan = calcDeliveryPathWithScheduling(jobs);
+            EnhancedPlanResult plan = calcDeliveryPathWithScheduling(jobs,false);
 
             dbg.append("[6] Scheduler finished.\n");
 
@@ -4060,7 +4142,7 @@ public class DroneService {
 
         List<MedDispatchRec> jobs = List.of(rec);
 
-        EnhancedPlanResult plan = calcDeliveryPathWithScheduling(jobs);
+        EnhancedPlanResult plan = calcDeliveryPathWithScheduling(jobs,false);
 
         StringBuilder report = new StringBuilder();
         report.append("=== CHARGING TEST ===\n\n");
@@ -4080,6 +4162,7 @@ public class DroneService {
     }
 
     public ResponseEntity<String> testMultipleDeliveriesWithCharging() {
+        StringBuilder report = new StringBuilder();
         // Three deliveries at different times
         List<MedDispatchRec> jobs = new ArrayList<>();
 
@@ -4087,7 +4170,7 @@ public class DroneService {
             MedDispatchRec rec = new MedDispatchRec();
             rec.setId(100 + i);
             rec.setDate(LocalDate.of(2025, 1, 1));
-            rec.setTime(LocalTime.parse(String.format("10:%02d", i * 15))); // 10:15, 10:30, 10:45
+            rec.setTime(LocalTime.parse(String.format("09:%02d", i ))); // 0901 0902 0903
 
             MedDispatchRec.Requirements req = new MedDispatchRec.Requirements();
             req.setCapacity(5.0);
@@ -4103,7 +4186,7 @@ public class DroneService {
         MedDispatchRec rec = new MedDispatchRec();
         rec.setId(999);
         rec.setDate(LocalDate.of(2025, 1, 1));
-        rec.setTime(LocalTime.parse(String.format("16:59:55")));
+        rec.setTime(LocalTime.parse(String.format("16:59:55"))); //unavailable time
 
         MedDispatchRec.Requirements req = new MedDispatchRec.Requirements();
         req.setCapacity(5.0);
@@ -4116,23 +4199,75 @@ public class DroneService {
 
         jobs.add(rec);
 
-        EnhancedPlanResult plan = calcDeliveryPathWithScheduling(jobs);
+        EnhancedPlanResult plan = calcDeliveryPathWithScheduling(jobs,false);
 
-        return ResponseEntity.ok("Check console for detailed charging logs!");
+        // ==========================
+        // Build JSON output
+        // ==========================
+        report.append("  \"missions\": [\n");
+
+        for (int i = 0; i < plan.missions.size(); i++) {
+            EnhancedDroneMission mission = plan.missions.get(i);
+
+            report.append("    {\n");
+            report.append("      \"droneId\": \"").append(mission.droneId).append("\",\n");
+            report.append("      \"legs\": [\n");
+
+            for (int j = 0; j < mission.legs.size(); j++) {
+                EnhancedDeliveryLeg leg = mission.legs.get(j);
+
+                report.append("        {\n");
+                report.append("          \"deliveryId\": ").append(leg.deliveryId).append(",\n");
+                report.append("          \"depart\": \"").append(leg.departureTime).append("\",\n");
+                report.append("          \"arrive\": \"").append(leg.arrivalTime).append("\",\n");
+                report.append("          \"return\": \"").append(leg.returnTime).append("\",\n");
+                report.append("          \"batteryBefore\": ").append(String.format("%.2f", leg.batteryLevelBefore)).append(",\n");
+                report.append("          \"batteryAfter\": ").append(String.format("%.2f", leg.batteryLevelAfter)).append(",\n");
+                report.append("          \"rechargeMinutes\": ").append(String.format("%.2f", leg.rechargeTimeMinutes)).append(",\n");
+                report.append("          \"flightSeconds\": ").append(String.format("%.2f", leg.flightDurationSeconds)).append("\n");
+                report.append("        }");
+
+                if (j < mission.legs.size() - 1) report.append(",");
+                report.append("\n");
+            }
+
+            report.append("      ]\n");
+            report.append("    }");
+
+            if (i < plan.missions.size() - 1) report.append(",");
+            report.append("\n");
+        }
+
+        report.append("  ],\n");
+
+        //------------------------------------------------------------
+        // unassigned deliveries
+        //------------------------------------------------------------
+        Set<Integer> assigned = plan.missions.stream()
+                .flatMap(m -> m.legs.stream())
+                .map(l -> l.deliveryId)
+                .collect(Collectors.toSet());
+
+        List<Integer> unassigned = jobs.stream()
+                .map(MedDispatchRec::getId)
+                .filter(id -> !assigned.contains(id))
+                .collect(Collectors.toList());
+
+        report.append("  \"unassignedDeliveries\": ").append(unassigned.toString()).append("\n");
+
+        report.append("}");
+
+        return ResponseEntity.ok(report.toString());
     }
 
     public ResponseEntity<String> testTwoDronesMultipleDeliveries() {
         StringBuilder report = new StringBuilder();
-        report.append("=== TWO DRONES MULTIPLE DELIVERIES TEST ===\n\n");
-
-
-        // Temporarily override loadMergedDrones to return our test drones
-        // (In real scenario, you'd have these in your database)
+        report.append("=== TWO DRONES MULTIPLE DELIVERIES ===\n\n");
 
         // ==================== DELIVERIES ====================
         List<MedDispatchRec> deliveries = new ArrayList<>();
 
-        // Delivery 1 - Early, needs ~45 Wh
+        // Delivery 1
         MedDispatchRec rec1 = new MedDispatchRec();
         rec1.setId(201);
         rec1.setDate(LocalDate.of(2025, 1, 1));
@@ -4149,7 +4284,7 @@ public class DroneService {
         rec1.setDelivery(del1);
         deliveries.add(rec1);
 
-        // Delivery 2 - Mid-morning, needs ~45 Wh
+        // Delivery 2
         MedDispatchRec rec2 = new MedDispatchRec();
         rec2.setId(202);
         rec2.setDate(LocalDate.of(2025, 1, 1));
@@ -4163,64 +4298,29 @@ public class DroneService {
         rec2.setDelivery(del2);
         deliveries.add(rec2);
 
-//        // Delivery 3 - Later, needs ~45 Wh
-//        MedDispatchRec rec3 = new MedDispatchRec();
-//        rec3.setId(203);
-//        rec3.setDate(LocalDate.of(2025, 1, 1));
-//        rec3.setTime(LocalTime.parse("09:15"));
-//        MedDispatchRec.Requirements req3 = new MedDispatchRec.Requirements();
-//        req3.setCapacity(5.0);
-//        rec3.setRequirements(req3);
-//        MedDispatchRec.Delivery del3 = new MedDispatchRec.Delivery();
-//        del3.setLng(-3.19);
-//        del3.setLat(55.943);
-//        rec3.setDelivery(del3);
-//        deliveries.add(rec3);
-//
-//        // Delivery 4 - Afternoon, needs ~45 Wh
-//        MedDispatchRec rec4 = new MedDispatchRec();
-//        rec4.setId(204);
-//        rec4.setDate(LocalDate.of(2025, 1, 1));
-//        rec4.setTime(LocalTime.parse("09:20"));
-//        MedDispatchRec.Requirements req4 = new MedDispatchRec.Requirements();
-//        req4.setCapacity(5.0);
-//        rec4.setRequirements(req4);
-//        MedDispatchRec.Delivery del4 = new MedDispatchRec.Delivery();
-//        del4.setLng(-3.19);
-//        del4.setLat(55.943);
-//        rec4.setDelivery(del4);
-//        deliveries.add(rec4);
-//
-//        // Delivery 5 - Late, needs ~45 Wh
-//        MedDispatchRec rec5 = new MedDispatchRec();
-//        rec5.setId(205);
-//        rec5.setDate(LocalDate.of(2025, 1, 1));
-//        rec5.setTime(LocalTime.parse("09:25"));
-//        MedDispatchRec.Requirements req5 = new MedDispatchRec.Requirements();
-//        req5.setCapacity(5.0);
-//        rec5.setRequirements(req5);
-//        MedDispatchRec.Delivery del5 = new MedDispatchRec.Delivery();
-//        del5.setLng(-3.191);
-//        del5.setLat(55.943);
-//        rec5.setDelivery(del5);
-//        deliveries.add(rec5);
+        // Delivery 3
+        MedDispatchRec rec3 = new MedDispatchRec();
+        rec3.setId(203);
+        rec3.setDate(LocalDate.of(2025, 1, 1));
+        rec3.setTime(LocalTime.parse("09:32"));
+        MedDispatchRec.Requirements req3 = new MedDispatchRec.Requirements();
+        req3.setCapacity(5.0);
+        rec3.setRequirements(req3);
+        MedDispatchRec.Delivery del3 = new MedDispatchRec.Delivery();
+        del3.setLng(-3.191);
+        del3.setLat(55.943);
+        rec3.setDelivery(del3);
+        deliveries.add(rec3);
 
-        report.append("SETUP:\n");
-        report.append("- DRONE-A: 80 Wh battery, available 9am-5pm\n");
-        report.append("- DRONE-B: 40 Wh battery, available 9am-5pm\n");
-        report.append("- Service Point: 5 Wh/min recharge, 1 slot\n");
-        report.append("- 5 deliveries seperation 5 mins\n");
 
         // ==================== RUN SCHEDULER ====================
         System.out.println("\n" + "=".repeat(60));
         System.out.println("STARTING TWO DRONE TEST");
         System.out.println("=".repeat(60));
 
-        EnhancedPlanResult plan = calcDeliveryPathWithScheduling(deliveries);
+        EnhancedPlanResult plan = calcDeliveryPathWithScheduling(deliveries,true);
 
         // ==================== ANALYZE RESULTS ====================
-        report.append("RESULTS:\n");
-        report.append("Total missions: ").append(plan.missions.size()).append("\n\n");
 
         for (EnhancedDroneMission mission : plan.missions) {
             report.append("--- ").append(mission.droneId).append(" ---\n");
@@ -4304,7 +4404,7 @@ public class DroneService {
             // PRINT BEFORE CALL
             //dbg.append("Battery before schedule=").append(battery.getCurrentCharge()).append("\n");
 
-            EnhancedPlanResult plan = calcDeliveryPathWithScheduling(jobs);
+            EnhancedPlanResult plan = calcDeliveryPathWithScheduling(jobs,true);
 
             dbg.append("[6] Scheduler finished.\n");
 
@@ -4341,6 +4441,84 @@ public class DroneService {
             dbg.append("\n*** EXCEPTION OCCURRED ***\n").append(sw.toString());
             return ResponseEntity.status(500).body(dbg.toString());
         }
+    }
+
+    public ResponseEntity<String> testPriorityDeliveries() {
+        StringBuilder report = new StringBuilder();
+        report.append("=== PRIORITY DELIVERIES TEST ===\n\n");
+
+        List<MedDispatchRec> deliveries = new ArrayList<>();
+
+        // Normal delivery (should use efficient drone)
+        MedDispatchRec rec1 = new MedDispatchRec();
+        rec1.setId(301);
+        rec1.setDate(LocalDate.of(2025, 1, 1));
+        rec1.setTime(LocalTime.parse("09:10"));
+        rec1.setImportant(false);  // ✅ Normal priority
+
+        MedDispatchRec.Requirements req1 = new MedDispatchRec.Requirements();
+        req1.setCapacity(5.0);
+        rec1.setRequirements(req1);
+
+        MedDispatchRec.Delivery del1 = new MedDispatchRec.Delivery();
+        del1.setLng(-3.191);
+        del1.setLat(55.943);
+        rec1.setDelivery(del1);
+        deliveries.add(rec1);
+
+        // Important delivery  (should use fastest drone)
+        MedDispatchRec rec2 = new MedDispatchRec();
+        rec2.setId(302);
+        rec2.setDate(LocalDate.of(2025, 1, 1));
+        rec2.setTime(LocalTime.parse("10:10"));
+        rec2.setImportant(true);  // ✅ IMPORTANT!
+
+        MedDispatchRec.Requirements req2 = new MedDispatchRec.Requirements();
+        req2.setCapacity(5.0);
+        rec2.setRequirements(req2);
+
+        MedDispatchRec.Delivery del2 = new MedDispatchRec.Delivery();
+        del2.setLng(-3.191);
+        del2.setLat(55.943);
+        rec2.setDelivery(del2);
+        deliveries.add(rec2);
+
+
+        report.append("SETUP:\n");
+        report.append("- Delivery 301: NORMAL priority\n");
+        report.append("- Delivery 302: IMPORTANT priority \n");
+
+        System.out.println("\n" + "=".repeat(60));
+        System.out.println("STARTING PRIORITY TEST");
+        System.out.println("=".repeat(60));
+
+        EnhancedPlanResult plan = calcDeliveryPathWithScheduling(deliveries,true);
+
+        report.append("RESULTS:\n");
+        for (EnhancedDroneMission mission : plan.missions) {
+            report.append("--- Drone ").append(mission.droneId).append(" ---\n");
+
+            for (EnhancedDeliveryLeg leg : mission.legs) {
+                MedDispatchRec orig = deliveries.stream()
+                        .filter(d -> d.getId() == leg.deliveryId)
+                        .findFirst()
+                        .orElse(null);
+
+                String priority = (orig != null && orig.isImportant()) ? "⚡ URGENT" : "📦 NORMAL";
+
+                report.append(String.format("  %s Delivery #%d: Depart %s, Return %s\n",
+                        priority,
+                        leg.deliveryId,
+                        leg.departureTime.toLocalTime(),
+                        leg.returnTime.toLocalTime()));
+                report.append(String.format("       Battery used: %.2f Wh, Flight time: %.1f min\n",
+                        leg.batteryUsed,
+                        leg.flightDurationSeconds / 60.0));
+            }
+            report.append("\n");
+        }
+
+        return ResponseEntity.ok(report.toString());
     }
 
 
