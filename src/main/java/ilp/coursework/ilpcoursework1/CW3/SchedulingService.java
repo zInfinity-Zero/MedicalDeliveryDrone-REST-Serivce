@@ -3,6 +3,7 @@ package ilp.coursework.ilpcoursework1.CW3;
 import ilp.coursework.ilpcoursework1.Drone.Availability;
 import ilp.coursework.ilpcoursework1.Drone.Drone;
 import ilp.coursework.ilpcoursework1.Drone.ServicePoint;
+import ilp.coursework.ilpcoursework1.Util.MedDispatchRec;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -13,11 +14,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Service
 public class SchedulingService {
 
-    // Track depot slot usage: servicePointId -> list of time slots
     private Map<Integer, List<TimeSlot>> depotSchedule = new ConcurrentHashMap<>();
 
     public static class TimeSlot {
@@ -91,18 +92,46 @@ public class SchedulingService {
     }
 
     /**
-     * Clear all reservations (useful for replanning)
-     */
-    public void clearAllReservations() {
-        depotSchedule.clear();
-    }
-
-    /**
      * Count how many drones are using depot at specific time
      */
     private int countConcurrentAt(List<TimeSlot> slots, LocalDateTime time) {
         return (int) slots.stream()
                 .filter(slot -> !time.isBefore(slot.start) && !time.isAfter(slot.end))
                 .count();
+    }
+    // Consider both availability AND dispatch time
+    // Earliest time the drone is allowed to start work for this dispatch
+
+    public LocalDateTime getEarliestAvailabilityForDispatch(Drone drone, MedDispatchRec dispatch) {
+        LocalDate date = dispatch.getDate();
+        LocalTime requestedTime = dispatch.getTime();
+        LocalDateTime requestedDateTime = LocalDateTime.of(date, requestedTime);
+
+        List<LocalDateTime> availabilityStarts = drone.getAvailability().stream()
+                .filter(av -> av.getDayOfWeek() == date.getDayOfWeek())
+                .map(av -> LocalDateTime.of(date, av.getFrom()))
+                .collect(Collectors.toList());
+
+        if (availabilityStarts.isEmpty()) {
+            // No availability this day, just return requested time; feasibility will fail later
+            return requestedDateTime;
+        }
+
+        LocalDateTime earliestAvailability = availabilityStarts.stream()
+                .min(LocalDateTime::compareTo)
+                .orElse(requestedDateTime);
+
+        // Drone cannot start before availability, and cannot start before requested dispatch time
+        return earliestAvailability.isAfter(requestedDateTime)
+                ? earliestAvailability
+                : requestedDateTime;
+    }
+
+    public LocalDateTime getEarliestAvailability(Drone drone, LocalDate date) {
+        return drone.getAvailability().stream()
+                .filter(av -> av.getDayOfWeek() == date.getDayOfWeek())
+                .map(av -> LocalDateTime.of(date, av.getFrom()))
+                .min(LocalDateTime::compareTo)
+                .orElse(LocalDateTime.of(date, LocalTime.of(9, 0)));
     }
 }

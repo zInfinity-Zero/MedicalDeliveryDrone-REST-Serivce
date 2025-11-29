@@ -211,14 +211,7 @@ public class BasicController {
     @PostMapping("/calcDeliveryPathWithScheduling")
     public ResponseEntity<DroneService.EnhancedPlanResult> calcDeliveryPathWithScheduling(
             @RequestBody List<MedDispatchRec> dispatches) {
-        try {
-            DroneService.EnhancedPlanResult result =
-                    dS.calcDeliveryPathWithScheduling(dispatches,true);
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.badRequest().build();
-        }
+        return dS.testCalcDeliveryPath(dispatches);
     }
 
     @GetMapping("/testpriority")

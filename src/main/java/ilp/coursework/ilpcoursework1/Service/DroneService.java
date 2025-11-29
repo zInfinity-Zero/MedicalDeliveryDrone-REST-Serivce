@@ -200,129 +200,71 @@ public class DroneService {
 
     ///
     public List<Drone> loadMergedDrones() {
-//        List<Drone> drones = ilp.fetchDrones();
-//
-//        List<ILPService.ServicePointDroneListDTO> spInfo = ilp.fetchDronesForServicePoints();
-//
-//
-//
-//        Map<String, Drone> byId = drones.stream()
-//
-//                .collect(Collectors.toMap(Drone::getId, d -> d));
-//
-//
-//
-//        for (ILPService.ServicePointDroneListDTO sp : spInfo) {
-//
-//            int spId = sp.getServicePointId();
-//
-//            for (ILPService.ServicePointDroneDTO d : sp.getDrones()) {
-//
-//                Drone drone = byId.get(String.valueOf(d.getId()));
-//                if (drone == null) {
-////                    System.out.println("WARNING: Drone ID from service-points NOT FOUND in drones(): " + d.getId());
-//                    continue;
-//                }
-//                drone.setServicePointId(spId);
-//                List<Availability> converted = Collections.emptyList();
-//
-//                if (d.getAvailability() != null) {
-//
-//                    converted = d.getAvailability().stream()
-//
-//                            .map(a -> {
-//
-//                                Availability av = new Availability();
-//
-//                                av.setDayOfWeek(DayOfWeek.valueOf(a.getDayOfWeek()));
-//
-//                                av.setFrom(safeParseTime(a.getFrom()));
-//
-//                                av.setUntil(safeParseTime(a.getUntil()));
-//
-//                                return av;
-//
-//                            })
-//
-//                            .toList();
-//
-//                }
-//
-//
-//
-//                drone.setAvailability(converted);
-//
-//            }
-//
-//        }
-        //addingmytestdrone
-        List<Drone> drones = new ArrayList<>();
-        Drone d = new Drone();
-        d.setId("TEST-1");
+        List<Drone> drones = ilp.fetchDrones();
 
-        Capability cap = new Capability();
-        cap.setCapacity(10.0);
-        cap.setCooling(true);
-        cap.setHeating(true);
+        List<ILPService.ServicePointDroneListDTO> spInfo = ilp.fetchDronesForServicePoints();
 
-        BatteryModel bm = new BatteryModel();
-        bm.setCapacity(100.0);
-        bm.setBaseConsumptionPerStep(0.5);
-        bm.setConsumptionPayloadFactor(0.2);
-        bm.setDegradationFactor(0.1);
-        bm.setCurrentCharge(100.0);
 
-        cap.setBattery(bm);
-        cap.setCruiseSpeed(0.00015);     // lnglat speed
 
-        d.setCapability(cap);
-        d.setServicePointId(1);       // Attach to SP 1 (Appleton Tower)
+        Map<String, Drone> byId = drones.stream()
 
-        Availability av = new Availability();
-        av.setDayOfWeek(DayOfWeek.WEDNESDAY);
-        av.setFrom(LocalTime.of(9, 0));
-        av.setUntil(LocalTime.of(17, 0));
-        d.setAvailability(List.of(av));
+                .collect(Collectors.toMap(Drone::getId, d -> d));
 
-        drones.add(d);
 
-        Drone d2 = new Drone();
-        d2.setId("TEST-2");
 
-        Capability cap2 = new Capability();
-        cap2.setCapacity(10.0);
-        cap2.setCooling(true);
-        cap2.setHeating(true);
+        for (ILPService.ServicePointDroneListDTO sp : spInfo) {
 
-        BatteryModel bm2 = new BatteryModel();
-        bm2.setCapacity(100.0);
-        bm2.setBaseConsumptionPerStep(0.05);
-        bm2.setConsumptionPayloadFactor(0.2);
-        bm2.setDegradationFactor(0.1);
-        bm2.setCurrentCharge(100.0);
+            int spId = sp.getServicePointId();
 
-        cap2.setBattery(bm2);
-        cap2.setCruiseSpeed(0.000015);     // lnglat speed
+            for (ILPService.ServicePointDroneDTO d : sp.getDrones()) {
 
-        d2.setCapability(cap2);
-        d2.setServicePointId(1);       // Attach to SP 1 (Appleton Tower)
+                Drone drone = byId.get(String.valueOf(d.getId()));
+                if (drone == null) {
+//                    System.out.println("WARNING: Drone ID from service-points NOT FOUND in drones(): " + d.getId());
+                    continue;
+                }
+                drone.setServicePointId(spId);
+                List<Availability> converted = Collections.emptyList();
 
-        Availability av2 = new Availability();
-        av2.setDayOfWeek(DayOfWeek.WEDNESDAY);
-        av2.setFrom(LocalTime.of(9, 0));
-        av2.setUntil(LocalTime.of(17, 0));
-        d2.setAvailability(List.of(av));
+                if (d.getAvailability() != null) {
 
-        drones.add(d2);
+                    converted = d.getAvailability().stream()
 
-        System.out.println("=== MERGED DRONES ===");
-        for (Drone dr : drones) {
-            System.out.println(
-                    "Drone " + dr.getId() +
-                            " SP=" + dr.getServicePointId() +
-                            " avail=" + dr.getAvailability()
-            );
+                            .map(a -> {
+
+                                Availability av = new Availability();
+
+                                av.setDayOfWeek(DayOfWeek.valueOf(a.getDayOfWeek()));
+
+                                av.setFrom(safeParseTime(a.getFrom()));
+
+                                av.setUntil(safeParseTime(a.getUntil()));
+
+                                return av;
+
+                            })
+
+                            .toList();
+
+                }
+
+
+
+                drone.setAvailability(converted);
+
+            }
+
         }
+
+
+//        System.out.println("=== MERGED DRONES ===");
+//        for (Drone dr : drones) {
+//            System.out.println(
+//                    "Drone " + dr.getId() +
+//                            " SP=" + dr.getServicePointId() +
+//                            " avail=" + dr.getAvailability()
+//            );
+//        }
 
         return drones;
 
@@ -1979,14 +1921,14 @@ public class DroneService {
         class BatteryNode {
             final DeliveryPathDTO.LngLat position;
             final double batteryRemaining;
-            final double timeElapsed;  // ✅ ADD THIS
+            final double timeElapsed;
             final double gCost;
             final double fCost;
 
             BatteryNode(DeliveryPathDTO.LngLat pos, double battery, double time, double g, double f) {
                 this.position = pos;
                 this.batteryRemaining = battery;
-                this.timeElapsed = time;  // ✅ ADD THIS
+                this.timeElapsed = time;
                 this.gCost = g;
                 this.fCost = f;
             }
@@ -2005,7 +1947,7 @@ public class DroneService {
         BatteryNode startNode = new BatteryNode(
                 start,
                 currentBatteryCharge,
-                0.0,  // ✅ ADD THIS - start time is 0
+                0.0,  //starttime
                 0,
                 heuristic(start, goal)
         );
@@ -2016,8 +1958,6 @@ public class DroneService {
 
         BatteryModel battery = drone.getCapability().getBattery();
 
-        // ✅ ADD THIS - Time per step calculation
-        // Assume each step takes 1 second (or use cruiseSpeed if you want)
         double TIME_PER_STEP = STEP / drone.getCapability().getCruiseSpeed();
 
 
@@ -2036,7 +1976,7 @@ public class DroneService {
                         path,
                         current.batteryRemaining,
                         currentBatteryCharge - current.batteryRemaining,
-                        current.timeElapsed  // ✅ ADD THIS
+                        current.timeElapsed
                 );
             }
 
@@ -2071,7 +2011,6 @@ public class DroneService {
                     continue;
                 }
 
-                // ✅ ADD THIS - Calculate time for this step
                 double newTime = current.timeElapsed + TIME_PER_STEP;
 
                 double newGCost = current.gCost + 1;
@@ -2080,7 +2019,7 @@ public class DroneService {
                 BatteryNode existing = bestNodes.get(neighborKey);
                 if (existing == null || newGCost < existing.gCost) {
                     BatteryNode neighborNode = new BatteryNode(
-                            neighbor, newBattery, newTime, newGCost, newFCost  // ✅ ADD newTime
+                            neighbor, newBattery, newTime, newGCost, newFCost
                     );
 
                     bestNodes.put(neighborKey, neighborNode);
@@ -2098,20 +2037,20 @@ public class DroneService {
         public final List<DeliveryPathDTO.LngLat> path;
         public final double batteryRemaining;
         public final double batteryUsed;
-        public final double timeElapsed;  // ✅ ADD THIS (in seconds)
+        public final double timeElapsed;
 
         public PathWithBatteryResult(List<DeliveryPathDTO.LngLat> path,
                                      double remaining,
                                      double used,
-                                     double time) {  // ✅ ADD THIS
+                                     double time) {
             this.path = path;
             this.batteryRemaining = remaining;
             this.batteryUsed = used;
-            this.timeElapsed = time;  // ✅ ADD THIS
+            this.timeElapsed = time;
         }
     }
 
-    // Reconstruct path helper (reuse your existing one or use this)
+    // Reconstruct path helper
     private List<DeliveryPathDTO.LngLat> reconstructPath(
             Map<String, DeliveryPathDTO.LngLat> cameFrom,
             DeliveryPathDTO.LngLat current,
@@ -2134,158 +2073,6 @@ public class DroneService {
     }
 
 
-    public DeliveryPathDTO.CalcResult calcDeliveryPath(List<MedDispatchRec> dispatches) {
-
-        if (dispatches == null) {
-            dispatches = Collections.emptyList();
-        }
-
-        List<Drone> drones = loadMergedDrones();
-        List<ServicePoint> sps = ilp.fetchServicePoints();
-        List<RestrictedZone> zones = ilp.fetchRestrictedAreas();
-
-        Map<Integer, ServicePoint> spById = sps.stream()
-                .collect(Collectors.toMap(ServicePoint::getId, sp -> sp));
-
-        Map<Integer, MedDispatchRec> unassigned = dispatches.stream()
-                .collect(Collectors.toMap(MedDispatchRec::getId, d -> d));
-
-        DeliveryPathDTO.CalcResult result = new DeliveryPathDTO.CalcResult();
-        int totalMoves = 0;
-        double totalCost = 0.0;
-        double totalBatteryUsed = 0.0;  // Track this!
-
-        Map<Integer, List<Drone>> dronesBySp =
-                drones.stream().collect(Collectors.groupingBy(Drone::getServicePointId));
-
-        for (Map.Entry<Integer, List<Drone>> spEntry : dronesBySp.entrySet()) {
-
-            int spId = spEntry.getKey();
-            ServicePoint sp = spById.get(spId);
-            if (sp == null) continue;
-
-            List<Drone> dronesAtSp = spEntry.getValue();
-
-            for (Drone drone : dronesAtSp) {
-
-                Capability cap = drone.getCapability();
-                BatteryModel battery = cap.getBattery();
-
-                if (battery == null) {
-                    // Fallback to old behavior if no battery model
-                    continue;
-                }
-
-                double currentBattery = battery.getCapacity();  // Start full
-
-                DeliveryPathDTO.DronePath dronePath = new DeliveryPathDTO.DronePath();
-                dronePath.setDroneId(drone.getId());
-
-                while (true) {
-                    if (unassigned.isEmpty()) break;
-
-                    DeliveryPathDTO.LngLat spPos =
-                            new DeliveryPathDTO.LngLat(sp.getPosition().getLng(),
-                                    sp.getPosition().getLat());
-
-                    // Find feasible deliveries
-                    double finalCurrentBattery = currentBattery;
-                    List<MedDispatchRec> feasible = unassigned.values().stream()
-                            .filter(rec -> canHandle(drone, rec))
-                            .filter(rec -> {
-                                // Quick battery estimate
-                                double payloadFraction = rec.getRequirements().getCapacity()
-                                        / cap.getCapacity();
-                                DeliveryPathDTO.LngLat dest = toLngLat(rec);
-
-                                double estimatedSteps = estimateMoves(spPos, dest) * 2;
-                                double estimatedConsumption = estimatedSteps *
-                                        batteryService.calculateStepConsumption(battery, payloadFraction);
-
-                                return finalCurrentBattery >= estimatedConsumption;
-                            })
-                            .collect(Collectors.toList());
-
-                    if (feasible.isEmpty()) {
-                        break;
-                    }
-
-                    // Pick nearest
-                    MedDispatchRec chosen = feasible.stream()
-                            .min(Comparator.comparingInt(rec -> estimateMoves(spPos, toLngLat(rec))))
-                            .orElseThrow();
-
-                    DeliveryPathDTO.LngLat dest = toLngLat(chosen);
-                    double payloadFraction = chosen.getRequirements().getCapacity()
-                            / cap.getCapacity();
-
-                    // Outbound with battery tracking
-                    PathWithBatteryResult outPath = aStarPathWithBattery(
-                            spPos, dest, drone, currentBattery, payloadFraction, zones);
-
-                    if (outPath == null) {
-                        unassigned.remove(chosen.getId());
-                        continue;
-                    }
-
-                    List<DeliveryPathDTO.LngLat> fullPath = new ArrayList<>(outPath.path);
-                    currentBattery = outPath.batteryRemaining;
-
-                    // Hover
-                    DeliveryPathDTO.LngLat last = fullPath.get(fullPath.size() - 1);
-                    fullPath.add(last);  // hover duplicate
-
-                    // Return path (empty drone, so payloadFraction = 0)
-                    PathWithBatteryResult backPath = aStarPathWithBattery(
-                            last, spPos, drone, currentBattery, 0.0, zones);
-
-                    if (backPath != null) {
-                        for (int i = 1; i < backPath.path.size(); i++) {
-                            fullPath.add(backPath.path.get(i));
-                        }
-                        currentBattery = backPath.batteryRemaining;
-                    }
-
-                    int used = fullPath.size();
-                    totalMoves += used;
-                    totalBatteryUsed += (outPath.batteryUsed +
-                            (backPath != null ? backPath.batteryUsed : 0));
-
-                    DeliveryPathDTO.DeliveryPath dp = new DeliveryPathDTO.DeliveryPath();
-                    dp.setDeliveryId(chosen.getId());
-                    dp.setFlightPath(fullPath);
-                    dronePath.getDeliveries().add(dp);
-
-                    unassigned.remove(chosen.getId());
-
-                    // Recharge for next delivery
-                    currentBattery = battery.getCapacity();
-                }
-
-                if (!dronePath.getDeliveries().isEmpty()) {
-                    // Calculate cost (you can add battery cost here if needed)
-                    double droneCost = cap.getCostInitial() +
-                            totalMoves * cap.getCostPerMove() +
-                            cap.getCostFinal();
-                    totalCost += droneCost;
-
-                    result.getDronePaths().add(dronePath);
-                }
-
-                if (unassigned.isEmpty()) break;
-            }
-
-            if (unassigned.isEmpty()) break;
-        }
-
-        result.setTotalMoves(totalMoves);
-        result.setTotalCost(totalCost);
-        return result;
-    }
-
-
-
-
     /// scheduling
     ///
     /// helper functions
@@ -2293,6 +2080,8 @@ public class DroneService {
     public static class EnhancedPlanResult {
         public List<EnhancedDroneMission> missions = new ArrayList<>();
 
+
+        ///used for debugging
         public double getTotalFlightTimeMinutes() {
             return missions.stream()
                     .mapToDouble(m -> m.getTotalFlightTimeMinutes())
@@ -2343,7 +2132,7 @@ public class DroneService {
         public double getTotalTimeMinutes() {
             if (legs.isEmpty()) return 0;
             LocalDateTime start = legs.get(0).departureTime;
-            LocalDateTime end = legs.get(legs.size() - 1).returnTime; // ✅ Include recharge
+            LocalDateTime end = legs.get(legs.size() - 1).returnTime;
             return Duration.between(start, end).toMinutes();
         }
     }
@@ -2354,1131 +2143,29 @@ public class DroneService {
         public LocalDateTime arrivalTime;
         public LocalDateTime returnTime;
         public double batteryUsed;
-        public double batteryLevelBefore;    // ✅ NEW: Battery before charging for this delivery
-        public double batteryLevelAfter;     // Battery after this delivery
+        public double batteryLevelBefore;
+        public double batteryLevelAfter;
         public double flightDurationSeconds;
         public List<DeliveryPathDTO.LngLat> flightPath;
         public double queueDelayMinutes;
-        public double rechargeTimeMinutes;   // Time spent charging BEFORE this delivery
+        public double rechargeTimeMinutes;
     }
 
     //main logic
-    public EnhancedPlanResult calcDeliveryPathWithScheduling1(List<MedDispatchRec> dispatches) {
+    //failed calcdeliverpath1 - picks one delivery for a drone and wait until the drone is fully charged
+    //failed calcdeliverypath2 - one global timeline for all drones - have to wait until one delivery done
 
-        if (dispatches == null || dispatches.isEmpty()) {
-            return new EnhancedPlanResult();
-        }
 
-        List<Drone> drones = loadMergedDrones();
-        List<ServicePoint> sps = ilp.fetchServicePoints();
-        List<RestrictedZone> zones = ilp.fetchRestrictedAreas();
+    // Helper class to store assignment options
 
-        Map<Integer, ServicePoint> spById = sps.stream()
-                .collect(Collectors.toMap(ServicePoint::getId, sp -> sp));
-
-        Map<Integer, MedDispatchRec> unassigned = dispatches.stream()
-                .collect(Collectors.toMap(MedDispatchRec::getId, d -> d));
-
-        EnhancedPlanResult result = new EnhancedPlanResult();
-
-        Map<String, LocalDateTime> droneCurrentTime = new HashMap<>();
-        Map<String, Double> droneBattery = new HashMap<>();
-
-        // ✅ FIX: Initialize drones at their earliest availability time
-        for (Drone d : drones) {
-            LocalDate firstDispatchDate = dispatches.get(0).getDate();
-            LocalDateTime earliest = getEarliestAvailability(d, firstDispatchDate);
-            droneCurrentTime.put(d.getId(), earliest);
-
-            BatteryModel bm = d.getCapability().getBattery();
-            droneBattery.put(d.getId(), bm.getCurrentCharge());
-        }
-
-        Map<Integer, List<Drone>> dronesBySp =
-                drones.stream().collect(Collectors.groupingBy(Drone::getServicePointId));
-
-        // ✅ FIX: Keep trying until all deliveries assigned or no drone can handle remaining
-        int maxRounds = 100; // Safety limit
-        int round = 0;
-
-        while (!unassigned.isEmpty() && round < maxRounds) {
-            round++;
-            boolean assignedAny = false;
-
-            System.out.println("\n=== ROUND " + round + " - " + unassigned.size() + " deliveries remaining ===");
-
-            for (Map.Entry<Integer, List<Drone>> spEntry : dronesBySp.entrySet()) {
-
-                int spId = spEntry.getKey();
-                ServicePoint sp = spById.get(spId);
-                if (sp == null) continue;
-
-                List<Drone> dronesAtSp = spEntry.getValue();
-
-                for (Drone drone : dronesAtSp) {
-
-                    Capability cap = drone.getCapability();
-                    BatteryModel battery = cap.getBattery();
-                    if (battery == null) continue;
-
-                    double currentBattery = droneBattery.get(drone.getId());
-                    LocalDateTime currentTime = droneCurrentTime.get(drone.getId());
-                    double rechargeRatePerMinute = sp.getRechargeRate();
-
-                    System.out.println("\n--- DRONE " + drone.getId() + " ---");
-                    System.out.println("Current battery: " + String.format("%.2f", currentBattery) + " Wh");
-                    System.out.println("Current time: " + currentTime);
-
-                    if (unassigned.isEmpty()) break;
-
-                    DeliveryPathDTO.LngLat spPos =
-                            new DeliveryPathDTO.LngLat(sp.getPosition().getLng(),
-                                    sp.getPosition().getLat());
-
-                    // ✅ FIX: Apply passive charging from current time to earliest dispatch time
-                    LocalDateTime earliestDispatchTime = unassigned.values().stream()
-                            .map(r -> LocalDateTime.of(r.getDate(), r.getTime()))
-                            .min(LocalDateTime::compareTo)
-                            .orElse(currentTime);
-
-                    if (earliestDispatchTime.isAfter(currentTime) && currentBattery < battery.getCapacity()) {
-                        long idleMinutes = Duration.between(currentTime, earliestDispatchTime).toMinutes();
-
-                        if (idleMinutes > 0) {
-                            double chargeGained = Math.min(
-                                    idleMinutes * rechargeRatePerMinute,
-                                    battery.getCapacity() - currentBattery
-                            );
-
-                            double batteryBefore = currentBattery;
-                            currentBattery += chargeGained;
-                            currentTime = earliestDispatchTime;
-
-                            System.out.println("⚡ PASSIVE CHARGE: " +
-                                    String.format("%.2f", batteryBefore) +
-                                    " → " + String.format("%.2f", currentBattery) +
-                                    " Wh (idle for " + idleMinutes + " min until " + earliestDispatchTime + ")");
-                        }
-                    }
-
-                    double finalCurrentBattery = currentBattery;
-                    LocalDateTime finalCurrentTime = currentTime;
-
-                    List<MedDispatchRec> feasible = unassigned.values().stream()
-                            .filter(rec -> {
-
-                                if (!canHandle(drone, rec)) {
-                                    return false;
-                                }
-
-                                // ✅ Check if dispatch time has arrived
-                                LocalDateTime dispatchTime = LocalDateTime.of(rec.getDate(), rec.getTime());
-                                if (finalCurrentTime.isBefore(dispatchTime)) {
-                                    // Not time yet for this dispatch
-                                    return false;
-                                }
-
-                                double payloadFraction = rec.getRequirements().getCapacity()
-                                        / cap.getCapacity();
-                                DeliveryPathDTO.LngLat dest = toLngLat(rec);
-
-                                double estimatedSteps = estimateMoves(spPos, dest) * 2;
-                                double estimatedConsumption = estimatedSteps *
-                                        batteryService.calculateStepConsumption(battery, payloadFraction);
-
-                                estimatedConsumption *= 1.10;
-
-                                System.out.println("  ? Delivery " + rec.getId() +
-                                        " (at " + dispatchTime + ") needs ~" +
-                                        String.format("%.2f", estimatedConsumption) +
-                                        " Wh, have " + String.format("%.2f", finalCurrentBattery) + " Wh");
-
-                                // ✅ Can we charge enough in time?
-                                if (finalCurrentBattery < estimatedConsumption) {
-                                    double deficit = estimatedConsumption - finalCurrentBattery;
-                                    double chargeTimeNeeded = deficit / rechargeRatePerMinute;
-
-                                    // Check if we can still charge more (not at max capacity)
-                                    if (finalCurrentBattery >= battery.getCapacity()) {
-                                        System.out.println("    ✗ Battery full but still insufficient");
-                                        return false;
-                                    }
-
-                                    System.out.println("    → Need " + String.format("%.2f", chargeTimeNeeded) +
-                                            " more min of charging");
-
-                                    // We can charge and then do this delivery
-                                    return true;
-                                }
-
-                                double queueDelay = schedulingService.calculateQueueDelay(
-                                        sp, finalCurrentTime, 0);
-
-                                double roughFlightOut = (estimateMoves(spPos, dest) * 1.0) / 60.0;
-                                double roughFlightBack = roughFlightOut;
-
-                                double chargeTimeNeeded = 0;
-                                if (finalCurrentBattery < estimatedConsumption) {
-                                    double deficit = estimatedConsumption - finalCurrentBattery;
-                                    chargeTimeNeeded = deficit / rechargeRatePerMinute;
-                                }
-
-                                double totalExpectedMinutes = queueDelay +
-                                        chargeTimeNeeded +
-                                        roughFlightOut +
-                                        roughFlightBack;
-
-                                boolean fitsAvailability = schedulingService.fitsInAvailability(
-                                        drone, finalCurrentTime, totalExpectedMinutes);
-
-                                if (!fitsAvailability) {
-                                    System.out.println("    ✗ Doesn't fit availability window");
-                                }
-
-                                return fitsAvailability;
-                            })
-                            .collect(Collectors.toList());
-
-                    if (feasible.isEmpty()) {
-                        System.out.println("No feasible deliveries for this drone right now.");
-                        continue; // Try next drone
-                    }
-
-                    // Find mission for this drone or create new one
-                    EnhancedDroneMission mission = result.missions.stream()
-                            .filter(m -> m.droneId.equals(drone.getId()))
-                            .findFirst()
-                            .orElseGet(() -> {
-                                EnhancedDroneMission m = new EnhancedDroneMission();
-                                m.droneId = drone.getId();
-                                result.missions.add(m);
-                                return m;
-                            });
-
-                    MedDispatchRec chosen = feasible.stream()
-                            .min(Comparator.comparingInt(rec -> estimateMoves(spPos, toLngLat(rec))))
-                            .orElseThrow();
-
-                    System.out.println("✓ Selected delivery " + chosen.getId());
-
-                    DeliveryPathDTO.LngLat dest = toLngLat(chosen);
-                    double payloadFraction = chosen.getRequirements().getCapacity()
-                            / cap.getCapacity();
-
-                    double estimatedSteps = estimateMoves(spPos, dest) * 2;
-                    double estimatedConsumption = estimatedSteps *
-                            batteryService.calculateStepConsumption(battery, payloadFraction);
-                    estimatedConsumption *= 1.10;
-
-                    // Active charging if needed
-                    double chargeTimeMinutes = 0;
-                    double batteryBeforeActiveCharge = currentBattery;
-
-                    if (currentBattery < estimatedConsumption) {
-                        double deficit = estimatedConsumption - currentBattery;
-                        chargeTimeMinutes = deficit / rechargeRatePerMinute;
-
-                        currentTime = currentTime.plusMinutes((long) Math.ceil(chargeTimeMinutes));
-                        currentBattery += chargeTimeMinutes * rechargeRatePerMinute;
-                        currentBattery = Math.min(currentBattery, battery.getCapacity());
-
-                        System.out.println("🔋 ACTIVE CHARGE: " +
-                                String.format("%.2f", batteryBeforeActiveCharge) +
-                                " → " + String.format("%.2f", currentBattery) +
-                                " Wh (took " + String.format("%.2f", chargeTimeMinutes) + " min)");
-                    }
-
-                    double queueDelay = schedulingService.calculateQueueDelay(
-                            sp, currentTime, 0);
-
-                    if (queueDelay > 0) {
-                        System.out.println("⏳ QUEUE: Waiting " + queueDelay + " minutes");
-                    }
-
-                    LocalDateTime actualDepartureTime = currentTime.plusMinutes((long) queueDelay);
-
-                    System.out.println("✈️  DEPARTING: at " + actualDepartureTime +
-                            " with battery " + String.format("%.2f", currentBattery) + " Wh");
-
-                    PathWithBatteryResult outPath = aStarPathWithBattery(
-                            spPos, dest, drone, currentBattery, payloadFraction, zones);
-
-                    if (outPath == null) {
-                        System.out.println("✗ A* failed to find path");
-                        unassigned.remove(chosen.getId());
-                        continue;
-                    }
-
-                    currentBattery = outPath.batteryRemaining;
-                    LocalDateTime arrivalTime = actualDepartureTime.plusSeconds((long) outPath.timeElapsed);
-
-                    List<DeliveryPathDTO.LngLat> fullPath = new ArrayList<>(outPath.path);
-                    DeliveryPathDTO.LngLat last = fullPath.get(fullPath.size() - 1);
-                    fullPath.add(last);
-
-                    PathWithBatteryResult backPath = aStarPathWithBattery(
-                            last, spPos, drone, currentBattery, 0.0, zones);
-
-                    if (backPath == null) {
-                        System.out.println("✗ A* failed to find return path");
-                        unassigned.remove(chosen.getId());
-                        continue;
-                    }
-
-                    for (int i = 1; i < backPath.path.size(); i++) {
-                        fullPath.add(backPath.path.get(i));
-                    }
-
-                    currentBattery = backPath.batteryRemaining;
-                    currentTime = arrivalTime.plusSeconds((long) backPath.timeElapsed);
-
-                    System.out.println("🏠 RETURNED: at " + currentTime +
-                            " with battery " + String.format("%.2f", currentBattery) + " Wh");
-
-                    schedulingService.reserveSlot(
-                            sp.getId(),
-                            actualDepartureTime,
-                            currentTime,
-                            drone.getId()
-                    );
-
-                    EnhancedDeliveryLeg leg = new EnhancedDeliveryLeg();
-                    leg.deliveryId = chosen.getId();
-                    leg.departureTime = actualDepartureTime;
-                    leg.arrivalTime = arrivalTime;
-                    leg.returnTime = currentTime;
-                    leg.batteryUsed = outPath.batteryUsed + backPath.batteryUsed;
-                    leg.flightPath = fullPath;
-                    leg.queueDelayMinutes = queueDelay;
-                    leg.flightDurationSeconds = outPath.timeElapsed + backPath.timeElapsed;
-                    leg.rechargeTimeMinutes = chargeTimeMinutes;
-                    leg.batteryLevelAfter = currentBattery;
-                    leg.batteryLevelBefore = batteryBeforeActiveCharge;
-
-                    mission.legs.add(leg);
-                    unassigned.remove(chosen.getId());
-                    assignedAny = true;
-
-                    droneCurrentTime.put(drone.getId(), currentTime);
-                    droneBattery.put(drone.getId(), currentBattery);
-
-                    if (unassigned.isEmpty()) break;
-                }
-
-                if (unassigned.isEmpty()) break;
-            }
-
-            // ✅ If no drone could take any delivery this round, advance time and let them charge
-            if (!assignedAny && !unassigned.isEmpty()) {
-                System.out.println("\n⚠️  No drone ready yet - advancing time by 1 minute for charging...");
-
-                for (Drone d : drones) {
-                    LocalDateTime currentTime = droneCurrentTime.get(d.getId());
-                    double currentBattery = droneBattery.get(d.getId());
-
-                    ServicePoint sp = spById.get(d.getServicePointId());
-                    if (sp != null && currentBattery < d.getCapability().getBattery().getCapacity()) {
-                        currentBattery += sp.getRechargeRate() / 60.0; // 1 minute of charging
-                        currentBattery = Math.min(currentBattery, d.getCapability().getBattery().getCapacity());
-
-                        droneBattery.put(d.getId(), currentBattery);
-                        droneCurrentTime.put(d.getId(), currentTime.plusMinutes(1));
-                    }
-                }
-            }
-
-            if (unassigned.isEmpty()) break;
-        }
-
-        if (!unassigned.isEmpty()) {
-            System.out.println("\n❌ WARNING: " + unassigned.size() + " deliveries could not be assigned!");
-            unassigned.values().forEach(rec ->
-                    System.out.println("  - Delivery " + rec.getId() + " at " + rec.getTime()));
-        }
-
-        return result;
-    }
-
-    public EnhancedPlanResult calcDeliveryPathWithScheduling2(List<MedDispatchRec> dispatches) {//this one picks one delivery for a drone and wait until the drone is fully charged
-
-        if (dispatches == null || dispatches.isEmpty()) {
-            return new EnhancedPlanResult();
-        }
-
-        List<Drone> drones = loadMergedDrones();
-        List<ServicePoint> sps = ilp.fetchServicePoints();
-        List<RestrictedZone> zones = ilp.fetchRestrictedAreas();
-
-        Map<Integer, ServicePoint> spById = sps.stream()
-                .collect(Collectors.toMap(ServicePoint::getId, sp -> sp));
-
-        Map<Integer, MedDispatchRec> unassigned = dispatches.stream()
-                .collect(Collectors.toMap(MedDispatchRec::getId, d -> d));
-
-        EnhancedPlanResult result = new EnhancedPlanResult();
-
-        Map<String, LocalDateTime> droneCurrentTime = new HashMap<>();
-        Map<String, Double> droneBattery = new HashMap<>();
-
-        // ✅ FIX: Only initialize drones that are actually available on dispatch dates
-        LocalDate firstDispatchDate = dispatches.get(0).getDate();
-
-        for (Drone d : drones) {
-            // Check if drone has ANY availability on the first dispatch date
-            boolean availableOnDate = d.getAvailability().stream()
-                    .anyMatch(av -> av.getDayOfWeek() == firstDispatchDate.getDayOfWeek());
-
-            if (!availableOnDate) {
-                // Skip this drone - not available on dispatch day
-                System.out.println("⊗ Drone " + d.getId() + " not available on " +
-                        firstDispatchDate.getDayOfWeek());
-                continue;
-            }
-
-            LocalDateTime earliest = getEarliestAvailability(d, firstDispatchDate);
-            droneCurrentTime.put(d.getId(), earliest);
-
-            BatteryModel bm = d.getCapability().getBattery();
-            if (bm != null) {
-                droneBattery.put(d.getId(), bm.getCurrentCharge());
-
-                System.out.println("✓ Drone " + d.getId() + " available at " + earliest +
-                        " with " + String.format("%.2f", bm.getCurrentCharge()) + " Wh");
-            }
-        }
-
-        // ✅ Filter drones to only those that were initialized
-        drones = drones.stream()
-                .filter(d -> droneCurrentTime.containsKey(d.getId()))
-                .collect(Collectors.toList());
-
-        if (drones.isEmpty()) {
-            System.out.println("❌ No drones available on " + firstDispatchDate);
-            return result;
-        }
-
-        Map<Integer, List<Drone>> dronesBySp =
-                drones.stream().collect(Collectors.groupingBy(Drone::getServicePointId));
-
-        int maxRounds = 100;
-        int round = 0;
-
-        while (!unassigned.isEmpty() && round < maxRounds) {
-            round++;
-            boolean assignedAny = false;
-
-            System.out.println("\n=== ROUND " + round + " - " + unassigned.size() +
-                    " deliveries remaining, " + drones.size() + " drones active ===");
-
-            for (Map.Entry<Integer, List<Drone>> spEntry : dronesBySp.entrySet()) {
-
-                int spId = spEntry.getKey();
-                ServicePoint sp = spById.get(spId);
-                if (sp == null) continue;
-
-                List<Drone> dronesAtSp = spEntry.getValue();
-
-                for (Drone drone : dronesAtSp) {
-
-                    Capability cap = drone.getCapability();
-                    BatteryModel battery = cap.getBattery();
-                    if (battery == null) continue;
-
-                    double currentBattery = droneBattery.get(drone.getId());
-                    LocalDateTime currentTime = droneCurrentTime.get(drone.getId());
-                    double rechargeRatePerMinute = sp.getRechargeRate();
-
-                    System.out.println("\n--- DRONE " + drone.getId() + " ---");
-                    System.out.println("Current battery: " + String.format("%.2f", currentBattery) + " Wh");
-                    System.out.println("Current time: " + currentTime);
-
-                    if (unassigned.isEmpty()) break;
-
-                    DeliveryPathDTO.LngLat spPos =
-                            new DeliveryPathDTO.LngLat(sp.getPosition().getLng(),
-                                    sp.getPosition().getLat());
-
-                    // Passive charging
-                    LocalDateTime finalCurrentTime1 = currentTime;
-                    LocalDateTime earliestDispatchTime = unassigned.values().stream()
-                            .map(r -> LocalDateTime.of(r.getDate(), r.getTime()))
-                            .filter(dt -> !dt.isBefore(finalCurrentTime1)) // ✅ Only future dispatches
-                            .min(LocalDateTime::compareTo)
-                            .orElse(currentTime);
-
-                    if (earliestDispatchTime.isAfter(currentTime) && currentBattery < battery.getCapacity()) {
-                        long idleMinutes = Duration.between(currentTime, earliestDispatchTime).toMinutes();
-
-                        if (idleMinutes > 0) {
-                            double chargeGained = Math.min(
-                                    idleMinutes * rechargeRatePerMinute,
-                                    battery.getCapacity() - currentBattery
-                            );
-
-                            double batteryBefore = currentBattery;
-                            currentBattery += chargeGained;
-                            currentTime = earliestDispatchTime;
-
-                            System.out.println("⚡ PASSIVE CHARGE: " +
-                                    String.format("%.2f", batteryBefore) +
-                                    " → " + String.format("%.2f", currentBattery) +
-                                    " Wh (idle for " + idleMinutes + " min until " + earliestDispatchTime + ")");
-                        }
-                    }
-
-                    double finalCurrentBattery = currentBattery;
-                    LocalDateTime finalCurrentTime = currentTime;
-
-                    List<MedDispatchRec> feasible = unassigned.values().stream()
-                            .filter(rec -> {
-
-                                if (!canHandle(drone, rec)) {
-                                    return false;
-                                }
-
-                                LocalDateTime dispatchTime = LocalDateTime.of(rec.getDate(), rec.getTime());
-                                if (finalCurrentTime.isBefore(dispatchTime)) {
-                                    return false;
-                                }
-
-                                double payloadFraction = rec.getRequirements().getCapacity()
-                                        / cap.getCapacity();
-                                DeliveryPathDTO.LngLat dest = toLngLat(rec);
-
-                                double estimatedSteps = estimateMoves(spPos, dest) * 2;
-                                double estimatedConsumption = estimatedSteps *
-                                        batteryService.calculateStepConsumption(battery, payloadFraction);
-
-                                estimatedConsumption *= 1.10;
-
-                                System.out.println("  ? Delivery " + rec.getId() +
-                                        " (at " + dispatchTime + ") needs ~" +
-                                        String.format("%.2f", estimatedConsumption) +
-                                        " Wh, have " + String.format("%.2f", finalCurrentBattery) + " Wh");
-
-                                if (finalCurrentBattery < estimatedConsumption) {
-                                    double deficit = estimatedConsumption - finalCurrentBattery;
-                                    double chargeTimeNeeded = deficit / rechargeRatePerMinute;
-
-                                    if (finalCurrentBattery >= battery.getCapacity()) {
-                                        System.out.println("    ✗ Battery full but still insufficient");
-                                        return false;
-                                    }
-
-                                    System.out.println("    → Need " + String.format("%.2f", chargeTimeNeeded) +
-                                            " more min of charging");
-
-                                    return true;
-                                }
-
-                                double queueDelay = schedulingService.calculateQueueDelay(
-                                        sp, finalCurrentTime, 0);
-
-                                double roughFlightOut = (estimateMoves(spPos, dest) * 1.0) / 60.0;
-                                double roughFlightBack = roughFlightOut;
-
-                                double chargeTimeNeeded = 0;
-                                if (finalCurrentBattery < estimatedConsumption) {
-                                    double deficit = estimatedConsumption - finalCurrentBattery;
-                                    chargeTimeNeeded = deficit / rechargeRatePerMinute;
-                                }
-
-                                double totalExpectedMinutes = queueDelay +
-                                        chargeTimeNeeded +
-                                        roughFlightOut +
-                                        roughFlightBack;
-
-                                boolean fitsAvailability = schedulingService.fitsInAvailability(
-                                        drone, finalCurrentTime, totalExpectedMinutes);
-
-                                if (!fitsAvailability) {
-                                    System.out.println("    ✗ Doesn't fit availability window");
-                                }
-
-                                return fitsAvailability;
-                            })
-                            .collect(Collectors.toList());
-
-                    if (feasible.isEmpty()) {
-                        System.out.println("No feasible deliveries for this drone right now.");
-                        continue;
-                    }
-
-                    EnhancedDroneMission mission = result.missions.stream()
-                            .filter(m -> m.droneId.equals(drone.getId()))
-                            .findFirst()
-                            .orElseGet(() -> {
-                                EnhancedDroneMission m = new EnhancedDroneMission();
-                                m.droneId = drone.getId();
-                                result.missions.add(m);
-                                return m;
-                            });
-
-                    MedDispatchRec chosen = feasible.stream()
-                            .min(Comparator.comparingInt(rec -> estimateMoves(spPos, toLngLat(rec))))
-                            .orElseThrow();
-
-                    System.out.println("✓ Selected delivery " + chosen.getId());
-
-                    DeliveryPathDTO.LngLat dest = toLngLat(chosen);
-                    double payloadFraction = chosen.getRequirements().getCapacity()
-                            / cap.getCapacity();
-
-                    double estimatedSteps = estimateMoves(spPos, dest) * 2;
-                    double estimatedConsumption = estimatedSteps *
-                            batteryService.calculateStepConsumption(battery, payloadFraction);
-                    estimatedConsumption *= 1.10;
-
-                    double chargeTimeMinutes = 0;
-                    double batteryBeforeActiveCharge = currentBattery;
-
-                    if (currentBattery < estimatedConsumption) {
-                        double deficit = estimatedConsumption - currentBattery;
-                        chargeTimeMinutes = deficit / rechargeRatePerMinute;
-
-                        currentTime = currentTime.plusMinutes((long) Math.ceil(chargeTimeMinutes));
-                        currentBattery += chargeTimeMinutes * rechargeRatePerMinute;
-                        currentBattery = Math.min(currentBattery, battery.getCapacity());
-
-                        System.out.println("🔋 ACTIVE CHARGE: " +
-                                String.format("%.2f", batteryBeforeActiveCharge) +
-                                " → " + String.format("%.2f", currentBattery) +
-                                " Wh (took " + String.format("%.2f", chargeTimeMinutes) + " min)");
-                    }
-
-                    double queueDelay = schedulingService.calculateQueueDelay(
-                            sp, currentTime, 0);
-
-                    if (queueDelay > 0) {
-                        System.out.println("⏳ QUEUE: Waiting " + queueDelay + " minutes");
-                    }
-
-                    LocalDateTime actualDepartureTime = currentTime.plusMinutes((long) queueDelay);
-
-                    System.out.println("✈️  DEPARTING: at " + actualDepartureTime +
-                            " with battery " + String.format("%.2f", currentBattery) + " Wh");
-
-                    PathWithBatteryResult outPath = aStarPathWithBattery(
-                            spPos, dest, drone, currentBattery, payloadFraction, zones);
-
-                    if (outPath == null) {
-                        System.out.println("✗ A* failed to find path");
-                        unassigned.remove(chosen.getId());
-                        continue;
-                    }
-
-                    currentBattery = outPath.batteryRemaining;
-                    LocalDateTime arrivalTime = actualDepartureTime.plusSeconds((long) outPath.timeElapsed);
-
-                    List<DeliveryPathDTO.LngLat> fullPath = new ArrayList<>(outPath.path);
-                    DeliveryPathDTO.LngLat last = fullPath.get(fullPath.size() - 1);
-                    fullPath.add(last);
-
-                    PathWithBatteryResult backPath = aStarPathWithBattery(
-                            last, spPos, drone, currentBattery, 0.0, zones);
-
-                    if (backPath == null) {
-                        System.out.println("✗ A* failed to find return path");
-                        unassigned.remove(chosen.getId());
-                        continue;
-                    }
-
-                    for (int i = 1; i < backPath.path.size(); i++) {
-                        fullPath.add(backPath.path.get(i));
-                    }
-
-                    currentBattery = backPath.batteryRemaining;
-                    currentTime = arrivalTime.plusSeconds((long) backPath.timeElapsed);
-
-                    System.out.println("🏠 RETURNED: at " + currentTime +
-                            " with battery " + String.format("%.2f", currentBattery) + " Wh");
-
-                    schedulingService.reserveSlot(
-                            sp.getId(),
-                            actualDepartureTime,
-                            currentTime,
-                            drone.getId()
-                    );
-
-                    EnhancedDeliveryLeg leg = new EnhancedDeliveryLeg();
-                    leg.deliveryId = chosen.getId();
-                    leg.departureTime = actualDepartureTime;
-                    leg.arrivalTime = arrivalTime;
-                    leg.returnTime = currentTime;
-                    leg.batteryUsed = outPath.batteryUsed + backPath.batteryUsed;
-                    leg.flightPath = fullPath;
-                    leg.queueDelayMinutes = queueDelay;
-                    leg.flightDurationSeconds = outPath.timeElapsed + backPath.timeElapsed;
-                    leg.rechargeTimeMinutes = chargeTimeMinutes;
-                    leg.batteryLevelAfter = currentBattery;
-                    leg.batteryLevelBefore = batteryBeforeActiveCharge;
-
-                    mission.legs.add(leg);
-                    unassigned.remove(chosen.getId());
-                    assignedAny = true;
-
-                    droneCurrentTime.put(drone.getId(), currentTime);
-                    droneBattery.put(drone.getId(), currentBattery);
-
-                    if (unassigned.isEmpty()) break;
-                }
-
-                if (unassigned.isEmpty()) break;
-            }
-
-            if (!assignedAny && !unassigned.isEmpty()) {
-                System.out.println("\n⚠️  No drone ready yet - advancing time by 1 minute for charging...");
-
-                for (Drone d : drones) {
-                    LocalDateTime currentTime = droneCurrentTime.get(d.getId());
-                    double currentBattery = droneBattery.get(d.getId());
-
-                    ServicePoint sp = spById.get(d.getServicePointId());
-                    if (sp != null && currentBattery < d.getCapability().getBattery().getCapacity()) {
-                        currentBattery += sp.getRechargeRate() / 60.0;
-                        currentBattery = Math.min(currentBattery, d.getCapability().getBattery().getCapacity());
-
-                        droneBattery.put(d.getId(), currentBattery);
-                        droneCurrentTime.put(d.getId(), currentTime.plusMinutes(1));
-                    }
-                }
-            }
-
-            if (unassigned.isEmpty()) break;
-        }
-
-        if (!unassigned.isEmpty()) {
-            System.out.println("\n❌ WARNING: " + unassigned.size() + " deliveries could not be assigned!");
-            unassigned.values().forEach(rec ->
-                    System.out.println("  - Delivery " + rec.getId() + " at " + rec.getTime()));
-        }
-
-        return result;
-    }
-
-    public EnhancedPlanResult calcDeliveryPathWithScheduling3(List<MedDispatchRec> dispatches) {//one timeline for all drones - have to wait until one delivery done
-
-        if (dispatches == null || dispatches.isEmpty()) {
-            return new EnhancedPlanResult();
-        }
-
-        List<Drone> drones = loadMergedDrones();
-        List<ServicePoint> sps = ilp.fetchServicePoints();
-        List<RestrictedZone> zones = ilp.fetchRestrictedAreas();
-
-        Map<Integer, ServicePoint> spById = sps.stream()
-                .collect(Collectors.toMap(ServicePoint::getId, sp -> sp));
-
-        Map<Integer, MedDispatchRec> unassigned = dispatches.stream()
-                .collect(Collectors.toMap(MedDispatchRec::getId, d -> d));
-
-        EnhancedPlanResult result = new EnhancedPlanResult();
-
-        Map<String, LocalDateTime> droneCurrentTime = new HashMap<>();
-        Map<String, Double> droneBattery = new HashMap<>();
-
-        LocalDate firstDispatchDate = dispatches.get(0).getDate();
-
-        for (Drone d : drones) {
-            boolean availableOnDate = d.getAvailability().stream()
-                    .anyMatch(av -> av.getDayOfWeek() == firstDispatchDate.getDayOfWeek());
-
-            if (!availableOnDate) {
-                System.out.println("⊗ Drone " + d.getId() + " not available on " +
-                        firstDispatchDate.getDayOfWeek());
-                continue;
-            }
-
-            LocalDateTime earliest = getEarliestAvailability(d, firstDispatchDate);
-            droneCurrentTime.put(d.getId(), earliest);
-
-            BatteryModel bm = d.getCapability().getBattery();
-            if (bm != null) {
-                droneBattery.put(d.getId(), bm.getCurrentCharge());
-
-                System.out.println("✓ Drone " + d.getId() + " available at " + earliest +
-                        " with " + String.format("%.2f", bm.getCurrentCharge()) + " Wh");
-            }
-        }
-
-        drones = drones.stream()
-                .filter(d -> droneCurrentTime.containsKey(d.getId()))
-                .collect(Collectors.toList());
-
-        if (drones.isEmpty()) {
-            System.out.println("❌ No drones available on " + firstDispatchDate);
-            return result;
-        }
-
-        Map<Integer, List<Drone>> dronesBySp =
-                drones.stream().collect(Collectors.groupingBy(Drone::getServicePointId));
-
-        int maxRounds = 100;
-        int round = 0;
-
-        while (!unassigned.isEmpty() && round < maxRounds) {
-            round++;
-
-            System.out.println("\n=== ROUND " + round + " - " + unassigned.size() +
-                    " deliveries remaining, " + drones.size() + " drones active ===");
-
-            // ✅ NEW: Collect ALL feasible (drone, delivery) pairs across all drones
-            List<AssignmentOption> allOptions = new ArrayList<>();
-
-            for (Map.Entry<Integer, List<Drone>> spEntry : dronesBySp.entrySet()) {
-                int spId = spEntry.getKey();
-                ServicePoint sp = spById.get(spId);
-                if (sp == null) continue;
-
-                List<Drone> dronesAtSp = spEntry.getValue();
-
-                for (Drone drone : dronesAtSp) {
-                    Capability cap = drone.getCapability();
-                    BatteryModel battery = cap.getBattery();
-                    if (battery == null) continue;
-
-                    double currentBattery = droneBattery.get(drone.getId());
-                    LocalDateTime currentTime = droneCurrentTime.get(drone.getId());
-                    double rechargeRatePerMinute = sp.getRechargeRate();
-
-                    System.out.println("\n--- Evaluating DRONE " + drone.getId() + " ---");
-                    System.out.println("Current battery: " + String.format("%.2f", currentBattery) + " Wh");
-                    System.out.println("Current time: " + currentTime);
-
-                    DeliveryPathDTO.LngLat spPos =
-                            new DeliveryPathDTO.LngLat(sp.getPosition().getLng(),
-                                    sp.getPosition().getLat());
-
-                    // Apply passive charging
-                    LocalDateTime earliestDispatchTime = unassigned.values().stream()
-                            .map(r -> LocalDateTime.of(r.getDate(), r.getTime()))
-                            .filter(dt -> !dt.isBefore(currentTime))
-                            .min(LocalDateTime::compareTo)
-                            .orElse(currentTime);
-
-                    double batteryAfterPassiveCharge = currentBattery;
-                    LocalDateTime timeAfterPassiveCharge = currentTime;
-
-                    if (earliestDispatchTime.isAfter(currentTime) && currentBattery < battery.getCapacity()) {
-                        long idleMinutes = Duration.between(currentTime, earliestDispatchTime).toMinutes();
-
-                        if (idleMinutes > 0) {
-                            double chargeGained = Math.min(
-                                    idleMinutes * rechargeRatePerMinute,
-                                    battery.getCapacity() - currentBattery
-                            );
-
-                            batteryAfterPassiveCharge = currentBattery + chargeGained;
-                            timeAfterPassiveCharge = earliestDispatchTime;
-
-                            System.out.println("⚡ Would passively charge: " +
-                                    String.format("%.2f", currentBattery) +
-                                    " → " + String.format("%.2f", batteryAfterPassiveCharge) +
-                                    " Wh (idle for " + idleMinutes + " min)");
-                        }
-                    }
-
-                    // ✅ Check each unassigned delivery for this drone
-                    for (MedDispatchRec rec : unassigned.values()) {
-
-                        if (!canHandle(drone, rec)) {
-                            continue;
-                        }
-
-                        LocalDateTime dispatchTime = LocalDateTime.of(rec.getDate(), rec.getTime());
-                        if (timeAfterPassiveCharge.isBefore(dispatchTime)) {
-                            continue; // Not time yet
-                        }
-
-                        double payloadFraction = rec.getRequirements().getCapacity() / cap.getCapacity();
-                        DeliveryPathDTO.LngLat dest = toLngLat(rec);
-
-                        double estimatedSteps = estimateMoves(spPos, dest) * 2;
-                        double estimatedConsumption = estimatedSteps *
-                                batteryService.calculateStepConsumption(battery, payloadFraction);
-                        estimatedConsumption *= 1.10;
-
-                        double chargeTimeNeeded = 0;
-                        if (batteryAfterPassiveCharge < estimatedConsumption) {
-                            double deficit = estimatedConsumption - batteryAfterPassiveCharge;
-                            chargeTimeNeeded = deficit / rechargeRatePerMinute;
-
-                            if (batteryAfterPassiveCharge >= battery.getCapacity()) {
-                                // Battery full but still not enough
-                                continue;
-                            }
-                        }
-
-                        double queueDelay = schedulingService.calculateQueueDelay(
-                                sp, timeAfterPassiveCharge, 0);
-
-                        double roughFlightOut = (estimateMoves(spPos, dest) * 1.0) / 60.0;
-                        double roughFlightBack = roughFlightOut;
-
-                        double totalExpectedMinutes = queueDelay +
-                                chargeTimeNeeded +
-                                roughFlightOut +
-                                roughFlightBack;
-
-                        boolean fitsAvailability = schedulingService.fitsInAvailability(
-                                drone, timeAfterPassiveCharge, totalExpectedMinutes);
-
-                        if (!fitsAvailability) {
-                            continue;
-                        }
-
-                        // ✅ This is a valid option! Record it
-                        AssignmentOption option = new AssignmentOption();
-                        option.drone = drone;
-                        option.delivery = rec;
-                        option.servicePoint = sp;
-                        option.currentBattery = currentBattery;
-                        option.currentTime = currentTime;
-                        option.batteryAfterPassiveCharge = batteryAfterPassiveCharge;
-                        option.timeAfterPassiveCharge = timeAfterPassiveCharge;
-                        option.chargeTimeNeeded = chargeTimeNeeded;
-                        option.estimatedConsumption = estimatedConsumption;
-                        option.totalReadyTime = timeAfterPassiveCharge.plusMinutes((long) Math.ceil(chargeTimeNeeded));
-
-                        allOptions.add(option);
-
-                        System.out.println("  ✓ Can handle delivery " + rec.getId() +
-                                " (needs " + String.format("%.2f", estimatedConsumption) + " Wh, " +
-                                "charge time: " + String.format("%.2f", chargeTimeNeeded) + " min, " +
-                                "ready at: " + option.totalReadyTime.toLocalTime() + ")");
-                    }
-                }
-            }
-
-            // ✅ NEW: If no options, advance time for ALL drones and continue
-            if (allOptions.isEmpty()) {
-                System.out.println("\n⚠️  No drone can handle any delivery yet");
-
-                // Find the minimum time any drone needs to be ready for ANY delivery
-                double minTimeToReady = Double.MAX_VALUE;
-
-                for (Drone d : drones) {
-                    ServicePoint sp = spById.get(d.getServicePointId());
-                    if (sp == null) continue;
-
-                    double currentBattery = droneBattery.get(d.getId());
-                    LocalDateTime currentTime = droneCurrentTime.get(d.getId());
-                    BatteryModel battery = d.getCapability().getBattery();
-
-                    for (MedDispatchRec rec : unassigned.values()) {
-                        if (!canHandle(d, rec)) continue;
-
-                        LocalDateTime dispatchTime = LocalDateTime.of(rec.getDate(), rec.getTime());
-                        if (currentTime.isBefore(dispatchTime)) {
-                            // Wait until dispatch time
-                            long waitMinutes = Duration.between(currentTime, dispatchTime).toMinutes();
-                            minTimeToReady = Math.min(minTimeToReady, waitMinutes);
-                        }
-
-                        // Calculate charge time needed
-                        double payloadFraction = rec.getRequirements().getCapacity() /
-                                d.getCapability().getCapacity();
-                        DeliveryPathDTO.LngLat spPos = new DeliveryPathDTO.LngLat(
-                                sp.getPosition().getLng(), sp.getPosition().getLat());
-                        DeliveryPathDTO.LngLat dest = toLngLat(rec);
-
-                        double estimatedSteps = estimateMoves(spPos, dest) * 2;
-                        double estimatedConsumption = estimatedSteps *
-                                batteryService.calculateStepConsumption(battery, payloadFraction);
-                        estimatedConsumption *= 1.10;
-
-                        if (currentBattery < estimatedConsumption) {
-                            double deficit = estimatedConsumption - currentBattery;
-                            double chargeTime = deficit / sp.getRechargeRate();
-                            minTimeToReady = Math.min(minTimeToReady, chargeTime);
-                        }
-                    }
-                }
-
-                if (minTimeToReady == Double.MAX_VALUE || minTimeToReady <= 0) {
-                    minTimeToReady = 1; // No drones available
-                }
-
-                System.out.println("⏭️  Fast-forwarding " + String.format("%.2f", minTimeToReady) +
-                        " minutes (until next drone is ready)");
-
-                // Advance ALL drones by this time
-                for (Drone d : drones) {
-                    LocalDateTime currentTime = droneCurrentTime.get(d.getId());
-                    double currentBattery = droneBattery.get(d.getId());
-
-                    ServicePoint sp = spById.get(d.getServicePointId());
-                    if (sp != null && currentBattery < d.getCapability().getBattery().getCapacity()) {
-                        double chargeGained = minTimeToReady * sp.getRechargeRate();
-                        currentBattery = Math.min(
-                                currentBattery + chargeGained,
-                                d.getCapability().getBattery().getCapacity()
-                        );
-
-                        droneBattery.put(d.getId(), currentBattery);
-                    }
-
-                    droneCurrentTime.put(d.getId(), currentTime.plusMinutes((long) Math.ceil(minTimeToReady)));
-                }
-
-                continue; // Next round
-            }
-
-            // ✅ NEW: Pick the BEST option (earliest ready time, or least charge time needed)
-            AssignmentOption bestOption = allOptions.stream()
-                    .min(Comparator.comparing((AssignmentOption o) -> o.totalReadyTime)
-                            .thenComparingDouble(o -> o.chargeTimeNeeded))
-                    .orElseThrow();
-
-            System.out.println("\n✓✓✓ BEST CHOICE: Drone " + bestOption.drone.getId() +
-                    " → Delivery " + bestOption.delivery.getId() +
-                    " (ready at " + bestOption.totalReadyTime.toLocalTime() + ")");
-
-            // ✅ Execute the best option
-            Drone drone = bestOption.drone;
-            MedDispatchRec chosen = bestOption.delivery;
-            ServicePoint sp = bestOption.servicePoint;
-
-            // Update drone state with passive charge
-            droneCurrentTime.put(drone.getId(), bestOption.timeAfterPassiveCharge);
-            droneBattery.put(drone.getId(), bestOption.batteryAfterPassiveCharge);
-
-            double currentBattery = bestOption.batteryAfterPassiveCharge;
-            LocalDateTime currentTime = bestOption.timeAfterPassiveCharge;
-
-            // Active charging if needed
-            double chargeTimeMinutes = bestOption.chargeTimeNeeded;
-            double batteryBeforeActiveCharge = currentBattery;
-
-            if (chargeTimeMinutes > 0) {
-                currentTime = currentTime.plusMinutes((long) Math.ceil(chargeTimeMinutes));
-                currentBattery += chargeTimeMinutes * sp.getRechargeRate();
-                currentBattery = Math.min(currentBattery, drone.getCapability().getBattery().getCapacity());
-
-                System.out.println("🔋 ACTIVE CHARGE: " + drone.getId() + " " +
-                        String.format("%.2f", batteryBeforeActiveCharge) +
-                        " → " + String.format("%.2f", currentBattery) +
-                        " Wh (took " + String.format("%.2f", chargeTimeMinutes) + " min)");
-            }
-
-            double queueDelay = schedulingService.calculateQueueDelay(sp, currentTime, 0);
-
-            if (queueDelay > 0) {
-                System.out.println("⏳ QUEUE: " + drone.getId() + " waiting " + queueDelay + " minutes");
-            }
-
-            LocalDateTime actualDepartureTime = currentTime.plusMinutes((long) queueDelay);
-
-            System.out.println("✈️  DEPARTING: " + drone.getId() + " at " + actualDepartureTime +
-                    " with battery " + String.format("%.2f", currentBattery) + " Wh");
-
-            DeliveryPathDTO.LngLat spPos = new DeliveryPathDTO.LngLat(
-                    sp.getPosition().getLng(), sp.getPosition().getLat());
-            DeliveryPathDTO.LngLat dest = toLngLat(chosen);
-            double payloadFraction = chosen.getRequirements().getCapacity() /
-                    drone.getCapability().getCapacity();
-
-            PathWithBatteryResult outPath = aStarPathWithBattery(
-                    spPos, dest, drone, currentBattery, payloadFraction, zones);
-
-            if (outPath == null) {
-                System.out.println("✗ A* failed to find path");
-                unassigned.remove(chosen.getId());
-                continue;
-            }
-
-            currentBattery = outPath.batteryRemaining;
-            LocalDateTime arrivalTime = actualDepartureTime.plusSeconds((long) outPath.timeElapsed);
-
-            List<DeliveryPathDTO.LngLat> fullPath = new ArrayList<>(outPath.path);
-            DeliveryPathDTO.LngLat last = fullPath.get(fullPath.size() - 1);
-            fullPath.add(last);
-
-            PathWithBatteryResult backPath = aStarPathWithBattery(
-                    last, spPos, drone, currentBattery, 0.0, zones);
-
-            if (backPath == null) {
-                System.out.println("✗ A* failed to find return path");
-                unassigned.remove(chosen.getId());
-                continue;
-            }
-
-            for (int i = 1; i < backPath.path.size(); i++) {
-                fullPath.add(backPath.path.get(i));
-            }
-
-            currentBattery = backPath.batteryRemaining;
-            currentTime = arrivalTime.plusSeconds((long) backPath.timeElapsed);
-
-            System.out.println("🏠 RETURNED: " + drone.getId() + " at " + currentTime +
-                    " with battery " + String.format("%.2f", currentBattery) + " Wh");
-
-            schedulingService.reserveSlot(sp.getId(), actualDepartureTime, currentTime, drone.getId());
-
-            EnhancedDroneMission mission = result.missions.stream()
-                    .filter(m -> m.droneId.equals(drone.getId()))
-                    .findFirst()
-                    .orElseGet(() -> {
-                        EnhancedDroneMission m = new EnhancedDroneMission();
-                        m.droneId = drone.getId();
-                        result.missions.add(m);
-                        return m;
-                    });
-
-            EnhancedDeliveryLeg leg = new EnhancedDeliveryLeg();
-            leg.deliveryId = chosen.getId();
-            leg.departureTime = actualDepartureTime;
-            leg.arrivalTime = arrivalTime;
-            leg.returnTime = currentTime;
-            leg.batteryUsed = outPath.batteryUsed + backPath.batteryUsed;
-            leg.flightPath = fullPath;
-            leg.queueDelayMinutes = queueDelay;
-            leg.flightDurationSeconds = outPath.timeElapsed + backPath.timeElapsed;
-            leg.rechargeTimeMinutes = chargeTimeMinutes;
-            leg.batteryLevelAfter = currentBattery;
-            leg.batteryLevelBefore = batteryBeforeActiveCharge;
-
-            mission.legs.add(leg);
-            unassigned.remove(chosen.getId());
-
-            droneCurrentTime.put(drone.getId(), currentTime);
-            droneBattery.put(drone.getId(), currentBattery);
-        }
-
-        if (!unassigned.isEmpty()) {
-            System.out.println("\n❌ WARNING: " + unassigned.size() + " deliveries could not be assigned!");
-            unassigned.values().forEach(rec ->
-                    System.out.println("  - Delivery " + rec.getId() + " at " + rec.getTime()));
-        }
-
-        return result;
-    }
-
-    // ✅ NEW: Helper class to store assignment options
-    private static class AssignmentOption2 {//used for old calcdelivery
-        Drone drone;
-        MedDispatchRec delivery;
-        ServicePoint servicePoint;
-        double currentBattery;
-        LocalDateTime currentTime;
-        double batteryAfterPassiveCharge;
-        LocalDateTime timeAfterPassiveCharge;
-        double chargeTimeNeeded;
-        double estimatedConsumption;
-        LocalDateTime totalReadyTime;
-    }
-
-    // Helper for candidate assignments
     private static class AssignmentOption {
         Drone drone;
         MedDispatchRec delivery;
         ServicePoint servicePoint;
 
-        // State at the time we evaluate this option
         double currentBattery;
         LocalDateTime currentTime;
 
-        // After aligning to dispatch time and availability
         LocalDateTime earliestStart;
         double idleMinutes;
 
@@ -3492,33 +2179,23 @@ public class DroneService {
         double queueDelayMinutes;
         LocalDateTime departureTime;
 
-        // For tie-breaking (we primarily compare departureTime)
         LocalDateTime totalReadyTime;
         double batteryEfficiency;      // Battery used per km (lower is better)
         double speedScore;             // How fast delivery completes (lower time is better)
         double totalDeliveryTime;      // From now until returned (minutes)
 
-
-        //from old AssignmentOption to not error old CalcDelivery
-        double batteryAfterPassiveCharge;
-        LocalDateTime timeAfterPassiveCharge;
-        double chargeTimeNeeded;
     }
 
 
-    public EnhancedPlanResult calcDeliveryPathWithScheduling(List<MedDispatchRec> dispatches, boolean twoDrones) {
+    public EnhancedPlanResult calcDeliveryPathWithScheduling(List<MedDispatchRec> dispatches, List<Drone> drones) {
 
         if (dispatches == null || dispatches.isEmpty()) {
             return new EnhancedPlanResult();
         }
 
-        // Normal ILP metadata
-        List<Drone> drones = loadMergedDrones();
         List<ServicePoint> sps = ilp.fetchServicePoints();
         List<RestrictedZone> zones = ilp.fetchRestrictedAreas();
-        if (!twoDrones){
-            drones.remove(1); //removing TEST2 for testing
-        }
+
 
         Map<Integer, ServicePoint> spById = sps.stream()
                 .collect(Collectors.toMap(ServicePoint::getId, sp -> sp));
@@ -3532,7 +2209,6 @@ public class DroneService {
         Map<String, LocalDateTime> droneCurrentTime = new HashMap<>();
         Map<String, Double> droneBattery      = new HashMap<>();
 
-        // Initialisation: only drones that are actually available on the first dispatch date
         LocalDate firstDispatchDate = dispatches.get(0).getDate();
 
         for (Drone d : drones) {
@@ -3540,18 +2216,18 @@ public class DroneService {
                     .anyMatch(av -> av.getDayOfWeek() == firstDispatchDate.getDayOfWeek());
 
             if (!availableOnDate) {
-                System.out.println("⊗ Drone " + d.getId() + " not available on " +
+                System.out.println("Drone " + d.getId() + " NOT AVAILABLE on " +
                         firstDispatchDate.getDayOfWeek());
                 continue;
             }
 
-            LocalDateTime earliest = getEarliestAvailability(d, firstDispatchDate);
+            LocalDateTime earliest = schedulingService.getEarliestAvailability(d, firstDispatchDate);
             droneCurrentTime.put(d.getId(), earliest);
 
             BatteryModel bm = d.getCapability().getBattery();
             if (bm != null) {
                 droneBattery.put(d.getId(), bm.getCurrentCharge());
-                System.out.println("✓ Drone " + d.getId() + " available at " + earliest +
+                System.out.println("Drone " + d.getId() + " AVAILABLE at " + earliest +
                         " with " + String.format("%.2f", bm.getCurrentCharge()) + " Wh");
             }
         }
@@ -3562,7 +2238,7 @@ public class DroneService {
                 .collect(Collectors.toList());
 
         if (drones.isEmpty()) {
-            System.out.println("❌ No drones available on " + firstDispatchDate);
+            System.out.println(" No drones available on " + firstDispatchDate);
             return result;
         }
 
@@ -3619,9 +2295,9 @@ public class DroneService {
 
                         // Respect dispatch time and availability
                         LocalDateTime dispatchTime = LocalDateTime.of(rec.getDate(), rec.getTime());
-                        LocalDateTime availAligned = getEarliestAvailabilityForDispatch(drone, rec);
+                        LocalDateTime availAligned = schedulingService.getEarliestAvailabilityForDispatch(drone, rec);
 
-                        // Earliest moment the drone can even *start thinking* about this job
+                        // Earliest moment the drone can even start thinking about this job
                         LocalDateTime earliestStart = currentTime;
                         if (earliestStart.isBefore(dispatchTime)) {
                             earliestStart = dispatchTime;
@@ -3629,9 +2305,7 @@ public class DroneService {
                         if (earliestStart.isBefore(availAligned)) {
                             earliestStart = availAligned;
                         }
-
-                        // If earliestStart is before currentTime something is off, so clamp
-                        if (earliestStart.isBefore(currentTime)) {
+                        if (earliestStart.isBefore(currentTime)) {// should never reach here
                             earliestStart = currentTime;
                         }
 
@@ -3655,7 +2329,7 @@ public class DroneService {
                         double perStep = batteryService.calculateStepConsumption(battery, payloadFraction);
                         double estimatedConsumption = (estMovesOneWay * 2) * perStep * 1.10; // 10% margin
 
-                        System.out.println("  ? Delivery " + rec.getId() +
+                        System.out.println("  Delivery " + rec.getId() +
                                 " at " + dispatchTime +
                                 " needs ~" + String.format("%.2f", estimatedConsumption) +
                                 " Wh. After idle: " + String.format("%.2f", batteryAfterIdle));
@@ -3665,8 +2339,7 @@ public class DroneService {
 
                         if (batteryAfterIdle < estimatedConsumption) {
                             if (batteryAfterIdle >= battery.getCapacity()) {
-                                // already full yet still not enough: impossible for this drone
-                                System.out.println("    ✗ Cannot reach required energy even at full charge");
+                                System.out.println("    Cannot reach required energy even at full charge");
                                 continue;
                             }
 
@@ -3678,7 +2351,7 @@ public class DroneService {
                                 batteryAfterCharge = battery.getCapacity();
                             }
                             if (batteryAfterCharge < estimatedConsumption) {
-                                System.out.println("    ✗ Even with active charge cannot reach consumption");
+                                System.out.println("    Even with active charge cannot reach consumption");
                                 continue;
                             }
                         }
@@ -3689,8 +2362,9 @@ public class DroneService {
                                 (long) Math.ceil(activeChargeMinutes));
 
                         // Queue delay at depot
-                        double queueDelay = schedulingService.calculateQueueDelay(
-                                sp, afterChargeTime, 0);
+//                        double queueDelay = schedulingService.calculateQueueDelay(
+//                                sp, afterChargeTime, 0);
+                        double queueDelay = 0;
 
                         // Approximate flight time using cruise speed
                         double timePerStepSec = STEP / drone.getCapability().getCruiseSpeed();
@@ -3698,10 +2372,8 @@ public class DroneService {
                         double totalFlightMinutes = roughFlightOutMinutes * 2.0;
 
 
-                        // ✅ NEW: Calculate efficiency metrics
                         double batteryEfficiency = estimatedConsumption / (estMovesOneWay > 0 ? estMovesOneWay : 1);
 
-                        // Speed score: total time from now until delivery complete
                         // Total flight time in minutes (round trip)
                         double flightTimeMinutes = (estMovesOneWay * 2 * timePerStepSec) / 60.0;
 
@@ -3739,7 +2411,7 @@ public class DroneService {
                         opt.totalDeliveryTime = totalDeliveryTime;
                         allOptions.add(opt);
 
-                        System.out.println("    ✓ Option: Drone " + drone.getId() +
+                        System.out.println("    Option: Drone " + drone.getId() +
                                 " can do delivery " + rec.getId() +
                                 " depart at " + departureTime +
                                 " | Battery efficiency: " + String.format("%.2f", batteryEfficiency) +
@@ -3752,7 +2424,7 @@ public class DroneService {
 
             // No feasible options remain
             if (allOptions.isEmpty()) {
-                System.out.println("\n⚠️ No feasible (drone, delivery) assignments remain");
+                System.out.println("\n️ No feasible (drone, delivery) assignments remain");
                 break;
             }
 
@@ -3789,8 +2461,8 @@ public class DroneService {
                 AssignmentOption bestForThisDelivery;
 
                 if (isImportant) {
-                    // ✅ IMPORTANT: Prioritize SPEED (fastest delivery time)
-                    System.out.println("📍 Delivery " + deliveryId + " is IMPORTANT - prioritizing speed");
+                    // IMPORTANT: Prioritise SPEED (fastest delivery time)
+                    System.out.println(" Delivery " + deliveryId + " is IMPORTANT - prioritising speed");
                     bestForThisDelivery = candidatesForDelivery.stream()
                             .min(Comparator
                                     .comparingDouble((AssignmentOption o) -> o.totalDeliveryTime)  // Fastest first
@@ -3800,8 +2472,8 @@ public class DroneService {
                     System.out.println("   → Selected " + bestForThisDelivery.drone.getId() +
                             " (fastest: " + String.format("%.1f", bestForThisDelivery.totalDeliveryTime) + " min)");
                 } else {
-                    // ✅ NORMAL: Prioritize EFFICIENCY (lowest battery consumption)
-                    System.out.println("📦 Delivery " + deliveryId + " is NORMAL - prioritizing efficiency");
+                    // Prioritise EFFICIENCY (lowest battery consumption)
+                    System.out.println(" Delivery " + deliveryId + " is NORMAL - prioritising efficiency");
                     bestForThisDelivery = candidatesForDelivery.stream()
                             .min(Comparator
                                     .comparingDouble((AssignmentOption o) -> o.batteryEfficiency)  // Most efficient first
@@ -3815,7 +2487,7 @@ public class DroneService {
                 bestPerDelivery.put(deliveryId, bestForThisDelivery);
             }
 
-// ✅ From all the best-per-delivery options, pick the one with earliest departure
+// pick the one with earliest departure
             best = bestPerDelivery.values().stream()
                     .min(Comparator
                             .comparing((AssignmentOption o) -> o.departureTime)
@@ -3826,8 +2498,8 @@ public class DroneService {
             MedDispatchRec chosen = best.delivery;
             ServicePoint sp = best.servicePoint;
 
-            String priorityLabel = chosen.isImportant() ? "⚡ URGENT" : "📦 NORMAL";
-            System.out.println("\n✓✓✓ BEST CHOICE (" + priorityLabel + "): Drone " + drone.getId() +
+            String priorityLabel = chosen.isImportant() ? " URGENT" : " NORMAL";
+            System.out.println("\n BEST CHOICE (" + priorityLabel + "): Drone " + drone.getId() +
                     " → Delivery " + chosen.getId() +
                     " depart at " + best.departureTime +
                     " | Battery: " + String.format("%.2f", best.estimatedConsumption) + " Wh" +
@@ -3865,13 +2537,14 @@ public class DroneService {
             }
 
             // Queue delay
-            double queueDelay = schedulingService.calculateQueueDelay(sp, currentTime, 0);
-            if (queueDelay > 0) {
-                currentTime = currentTime.plusMinutes((long) queueDelay);
-            }
+//            double queueDelay = schedulingService.calculateQueueDelay(sp, currentTime, 0);
+//            if (queueDelay > 0) {
+//                currentTime = currentTime.plusMinutes((long) queueDelay);
+//            }
+            double queueDelay = 0;
             LocalDateTime departureTime = currentTime;
 
-            System.out.println("✈️  DEPARTING: Drone " + drone.getId() +
+            System.out.println("✈  DEPARTING: Drone " + drone.getId() +
                     " at " + departureTime +
                     " with battery " + String.format("%.2f", currentBattery) + " Wh");
 
@@ -3887,7 +2560,7 @@ public class DroneService {
                     spPos, dest, drone, currentBattery, payloadFraction, zones);
 
             if (outPath == null) {
-                System.out.println("✗ A* failed for outbound path, dropping delivery " + chosen.getId());
+                System.out.println(" A* failed for outbound path, dropping delivery " + chosen.getId());
                 unassigned.remove(chosen.getId());
                 // Do not move time/battery; try next round
                 continue;
@@ -3905,7 +2578,7 @@ public class DroneService {
                     last, spPos, drone, currentBattery, 0.0, zones);
 
             if (backPath == null) {
-                System.out.println("✗ A* failed to find return path, dropping delivery " + chosen.getId());
+                System.out.println(" A* failed to find return path, dropping delivery " + chosen.getId());
                 unassigned.remove(chosen.getId());
                 continue;
             }
@@ -3917,11 +2590,11 @@ public class DroneService {
             currentBattery = backPath.batteryRemaining;
             currentTime = arrivalTime.plusSeconds((long) backPath.timeElapsed);
 
-            System.out.println("🏠 RETURNED: Drone " + drone.getId() +
+            System.out.println(" RETURNED: Drone " + drone.getId() +
                     " at " + currentTime +
                     " with battery " + String.format("%.2f", currentBattery) + " Wh");
 
-            // Reserve depot slot only for flight window
+            // Reserve depot slot only for flight window //fail to integrate into system
             schedulingService.reserveSlot(
                     sp.getId(),
                     departureTime,
@@ -3962,49 +2635,12 @@ public class DroneService {
         }
 
         if (!unassigned.isEmpty()) {
-            System.out.println("\n❌ WARNING: " + unassigned.size() + " deliveries could not be assigned!");
+            System.out.println("\n WARNING: " + unassigned.size() + " deliveries could not be assigned!");
             unassigned.values().forEach(rec ->
                     System.out.println("  - Delivery " + rec.getId() + " at " + rec.getTime()));
         }
 
         return result;
-    }
-
-
-    // ✅ NEW METHOD: Consider both availability AND dispatch time
-    // Earliest time the drone is allowed to start work for this dispatch
-    private LocalDateTime getEarliestAvailabilityForDispatch(Drone drone, MedDispatchRec dispatch) {
-        LocalDate date = dispatch.getDate();
-        LocalTime requestedTime = dispatch.getTime();
-        LocalDateTime requestedDateTime = LocalDateTime.of(date, requestedTime);
-
-        List<LocalDateTime> availabilityStarts = drone.getAvailability().stream()
-                .filter(av -> av.getDayOfWeek() == date.getDayOfWeek())
-                .map(av -> LocalDateTime.of(date, av.getFrom()))
-                .collect(Collectors.toList());
-
-        if (availabilityStarts.isEmpty()) {
-            // No availability this day, just return requested time; feasibility will fail later
-            return requestedDateTime;
-        }
-
-        LocalDateTime earliestAvailability = availabilityStarts.stream()
-                .min(LocalDateTime::compareTo)
-                .orElse(requestedDateTime);
-
-        // Drone cannot start before availability, and cannot start before requested dispatch time
-        return earliestAvailability.isAfter(requestedDateTime)
-                ? earliestAvailability
-                : requestedDateTime;
-    }
-
-
-    private LocalDateTime getEarliestAvailability(Drone drone, LocalDate date) {
-        return drone.getAvailability().stream()
-                .filter(av -> av.getDayOfWeek() == date.getDayOfWeek())
-                .map(av -> LocalDateTime.of(date, av.getFrom()))
-                .min(LocalDateTime::compareTo)
-                .orElse(LocalDateTime.of(date, LocalTime.of(9, 0)));
     }
 
     public ResponseEntity<String> testing(){
@@ -4080,7 +2716,7 @@ public class DroneService {
             // PRINT BEFORE CALL
             //dbg.append("Battery before schedule=").append(battery.getCurrentCharge()).append("\n");
 
-            EnhancedPlanResult plan = calcDeliveryPathWithScheduling(jobs,false);
+            EnhancedPlanResult plan = calcDeliveryPathWithScheduling(jobs,loadMergedDrones());
 
             dbg.append("[6] Scheduler finished.\n");
 
@@ -4121,15 +2757,44 @@ public class DroneService {
 
 
 
+    public List<Drone> createDroneForTestCharging(){
+        List<Drone> drones = new ArrayList<>();
+        Drone d = new Drone();
+        d.setId("TEST-1");
 
+        Capability cap = new Capability();
+        cap.setCapacity(10.0);
+        cap.setCooling(true);
+        cap.setHeating(true);
 
+        BatteryModel bm = new BatteryModel();
+        bm.setCapacity(100.0);
+        bm.setBaseConsumptionPerStep(0.05);
+        bm.setConsumptionPayloadFactor(0.2);
+        bm.setDegradationFactor(0.1);
+        bm.setCurrentCharge(0.0); // 0 current charge
+
+        cap.setBattery(bm);
+        cap.setCruiseSpeed(0.000015);
+
+        d.setCapability(cap);
+        d.setServicePointId(1);
+
+        Availability av = new Availability();
+        av.setDayOfWeek(DayOfWeek.WEDNESDAY);
+        av.setFrom(LocalTime.of(9, 0));
+        av.setUntil(LocalTime.of(17, 0));
+        d.setAvailability(List.of(av));
+
+        drones.add(d);
+        return drones;
+    }
     public ResponseEntity<String> testChargingScenario() {
 
-        // Dispatch requiring ~45 Wh (will need charging)
         MedDispatchRec rec = new MedDispatchRec();
         rec.setId(101);
         rec.setDate(LocalDate.of(2025, 1, 1));
-        rec.setTime(LocalTime.parse("09:05"));
+        rec.setTime(LocalTime.parse("09:01"));
 
         MedDispatchRec.Requirements req = new MedDispatchRec.Requirements();
         req.setCapacity(5.0);
@@ -4142,10 +2807,11 @@ public class DroneService {
 
         List<MedDispatchRec> jobs = List.of(rec);
 
-        EnhancedPlanResult plan = calcDeliveryPathWithScheduling(jobs,false);
+        EnhancedPlanResult plan = calcDeliveryPathWithScheduling(jobs,createDroneForTestCharging());
 
         StringBuilder report = new StringBuilder();
         report.append("=== CHARGING TEST ===\n\n");
+        report.append("Setup Info: TEST-1 has 0 initial charge\n\n");
 
         if (!plan.missions.isEmpty()) {
             EnhancedDeliveryLeg leg = plan.missions.get(0).legs.get(0);
@@ -4161,6 +2827,39 @@ public class DroneService {
         return ResponseEntity.ok(report.toString());
     }
 
+
+    public List<Drone> createDroneForMultiDeliveries(){
+        List<Drone> drones = new ArrayList<>();
+        Drone d = new Drone();
+        d.setId("TEST-1");
+
+        Capability cap = new Capability();
+        cap.setCapacity(10.0);
+        cap.setCooling(true);
+        cap.setHeating(true);
+
+        BatteryModel bm = new BatteryModel();
+        bm.setCapacity(100.0);
+        bm.setBaseConsumptionPerStep(0.05);
+        bm.setConsumptionPayloadFactor(0.2);
+        bm.setDegradationFactor(0.1);
+        bm.setCurrentCharge(100.0); // 0 current charge
+
+        cap.setBattery(bm);
+        cap.setCruiseSpeed(0.000015);
+
+        d.setCapability(cap);
+        d.setServicePointId(1);
+
+        Availability av = new Availability();
+        av.setDayOfWeek(DayOfWeek.WEDNESDAY);
+        av.setFrom(LocalTime.of(9, 0));
+        av.setUntil(LocalTime.of(17, 0));
+        d.setAvailability(List.of(av));
+
+        drones.add(d);
+        return drones;
+    }
     public ResponseEntity<String> testMultipleDeliveriesWithCharging() {
         StringBuilder report = new StringBuilder();
         // Three deliveries at different times
@@ -4168,7 +2867,7 @@ public class DroneService {
 
         for (int i = 1; i <= 3; i++) {
             MedDispatchRec rec = new MedDispatchRec();
-            rec.setId(100 + i);
+            rec.setId(200 + i);
             rec.setDate(LocalDate.of(2025, 1, 1));
             rec.setTime(LocalTime.parse(String.format("09:%02d", i ))); // 0901 0902 0903
 
@@ -4199,11 +2898,12 @@ public class DroneService {
 
         jobs.add(rec);
 
-        EnhancedPlanResult plan = calcDeliveryPathWithScheduling(jobs,false);
+        EnhancedPlanResult plan = calcDeliveryPathWithScheduling(jobs,createDroneForMultiDeliveries());
 
-        // ==========================
-        // Build JSON output
-        // ==========================
+
+        report.append("=== MULTIPLE DELIVERIES TEST ===\n\n");
+
+        report.append("Setup Info: 3 deliveries with 1 minute seperation\n + 1 delivery which depart time is within the availability but return time is not\n\n");
         report.append("  \"missions\": [\n");
 
         for (int i = 0; i < plan.missions.size(); i++) {
@@ -4240,9 +2940,6 @@ public class DroneService {
 
         report.append("  ],\n");
 
-        //------------------------------------------------------------
-        // unassigned deliveries
-        //------------------------------------------------------------
         Set<Integer> assigned = plan.missions.stream()
                 .flatMap(m -> m.legs.stream())
                 .map(l -> l.deliveryId)
@@ -4260,6 +2957,67 @@ public class DroneService {
         return ResponseEntity.ok(report.toString());
     }
 
+    public List<Drone> createDroneForMultiDrones(){
+        List<Drone> drones = new ArrayList<>();
+        Drone d = new Drone();
+        d.setId("TEST-1");
+
+        Capability cap = new Capability();
+        cap.setCapacity(10.0);
+        cap.setCooling(true);
+        cap.setHeating(true);
+
+        BatteryModel bm = new BatteryModel();
+        bm.setCapacity(100.0);
+        bm.setBaseConsumptionPerStep(0.05);
+        bm.setConsumptionPayloadFactor(0.2);
+        bm.setDegradationFactor(0.1);
+        bm.setCurrentCharge(100.0);
+
+        cap.setBattery(bm);
+        cap.setCruiseSpeed(0.000015);
+
+        d.setCapability(cap);
+        d.setServicePointId(1);
+
+        Availability av = new Availability();
+        av.setDayOfWeek(DayOfWeek.WEDNESDAY);
+        av.setFrom(LocalTime.of(9, 0));
+        av.setUntil(LocalTime.of(17, 0));
+        d.setAvailability(List.of(av));
+
+        drones.add(d);
+        Drone d2 = new Drone();
+        d2.setId("TEST-2");
+
+        Capability cap2 = new Capability();
+        cap2.setCapacity(10.0);
+        cap2.setCooling(true);
+        cap2.setHeating(true);
+
+        BatteryModel bm2 = new BatteryModel();
+        bm2.setCapacity(100.0);
+        bm2.setBaseConsumptionPerStep(0.05);
+        bm2.setConsumptionPayloadFactor(0.2);
+        bm2.setDegradationFactor(0.1);
+        bm2.setCurrentCharge(100.0);
+
+        cap2.setBattery(bm2);
+        cap2.setCruiseSpeed(0.000015);
+
+        d2.setCapability(cap2);
+        d2.setServicePointId(1);
+
+        Availability av2 = new Availability();
+        av2.setDayOfWeek(DayOfWeek.WEDNESDAY);
+        av2.setFrom(LocalTime.of(9, 0));
+        av2.setUntil(LocalTime.of(17, 0));
+        d2.setAvailability(List.of(av2));
+
+        drones.add(d2);
+        return drones;
+    }
+
     public ResponseEntity<String> testTwoDronesMultipleDeliveries() {
         StringBuilder report = new StringBuilder();
         report.append("=== TWO DRONES MULTIPLE DELIVERIES ===\n\n");
@@ -4269,7 +3027,7 @@ public class DroneService {
 
         // Delivery 1
         MedDispatchRec rec1 = new MedDispatchRec();
-        rec1.setId(201);
+        rec1.setId(301);
         rec1.setDate(LocalDate.of(2025, 1, 1));
         rec1.setTime(LocalTime.parse("09:30"));
         MedDispatchRec.Requirements req1 = new MedDispatchRec.Requirements();
@@ -4286,7 +3044,7 @@ public class DroneService {
 
         // Delivery 2
         MedDispatchRec rec2 = new MedDispatchRec();
-        rec2.setId(202);
+        rec2.setId(302);
         rec2.setDate(LocalDate.of(2025, 1, 1));
         rec2.setTime(LocalTime.parse("09:31"));
         MedDispatchRec.Requirements req2 = new MedDispatchRec.Requirements();
@@ -4300,7 +3058,7 @@ public class DroneService {
 
         // Delivery 3
         MedDispatchRec rec3 = new MedDispatchRec();
-        rec3.setId(203);
+        rec3.setId(303);
         rec3.setDate(LocalDate.of(2025, 1, 1));
         rec3.setTime(LocalTime.parse("09:32"));
         MedDispatchRec.Requirements req3 = new MedDispatchRec.Requirements();
@@ -4313,14 +3071,10 @@ public class DroneService {
         deliveries.add(rec3);
 
 
-        // ==================== RUN SCHEDULER ====================
-        System.out.println("\n" + "=".repeat(60));
-        System.out.println("STARTING TWO DRONE TEST");
-        System.out.println("=".repeat(60));
+        EnhancedPlanResult plan = calcDeliveryPathWithScheduling(deliveries,createDroneForMultiDrones());
 
-        EnhancedPlanResult plan = calcDeliveryPathWithScheduling(deliveries,true);
+        report.append("Setup Info: TEST-1 and TEST-2 are similar drones handling 3 deliveries with 1 minute seperation between them\n\n");
 
-        // ==================== ANALYZE RESULTS ====================
 
         for (EnhancedDroneMission mission : plan.missions) {
             report.append("--- ").append(mission.droneId).append(" ---\n");
@@ -4349,7 +3103,6 @@ public class DroneService {
             report.append("\n");
         }
 
-        // Check for unassigned deliveries
         Set<Integer> assignedIds = plan.missions.stream()
                 .flatMap(m -> m.legs.stream())
                 .map(l -> l.deliveryId)
@@ -4369,92 +3122,219 @@ public class DroneService {
         return ResponseEntity.ok(report.toString());
     }
 
-    public ResponseEntity<String> testNoAvailableDrones() {
+    public List<Drone> createDroneForNoAvailDrones(){
+        List<Drone> drones = new ArrayList<>();
+        Drone d = new Drone();
+        d.setId("TEST-1");
 
-        StringBuilder dbg = new StringBuilder();
-        dbg.append("=== DEBUG START ===\n\n");
+        Capability cap = new Capability();
+        cap.setCapacity(10.0);
+        cap.setCooling(true);
+        cap.setHeating(true);
+
+        BatteryModel bm = new BatteryModel();
+        bm.setCapacity(100.0);
+        bm.setBaseConsumptionPerStep(0.05);
+        bm.setConsumptionPayloadFactor(0.2);
+        bm.setDegradationFactor(0.1);
+        bm.setCurrentCharge(100.0);
+
+        cap.setBattery(bm);
+        cap.setCruiseSpeed(0.000015);
+
+        d.setCapability(cap);
+        d.setServicePointId(1);
+
+        Availability av = new Availability();
+        av.setDayOfWeek(DayOfWeek.WEDNESDAY);
+        av.setFrom(LocalTime.of(9, 0));
+        av.setUntil(LocalTime.of(17, 0));
+        d.setAvailability(List.of(av));
+
+        drones.add(d);
+        Drone d2 = new Drone();
+        d2.setId("TEST-2");
+
+        Capability cap2 = new Capability();
+        cap2.setCapacity(10.0);
+        cap2.setCooling(true);
+        cap2.setHeating(true);
+
+        BatteryModel bm2 = new BatteryModel();
+        bm2.setCapacity(100.0);
+        bm2.setBaseConsumptionPerStep(5);
+        bm2.setConsumptionPayloadFactor(0.2);
+        bm2.setDegradationFactor(0.1);
+        bm2.setCurrentCharge(100.0);
+
+        cap2.setBattery(bm2);
+        cap2.setCruiseSpeed(0.000015);
+
+        d2.setCapability(cap2);
+        d2.setServicePointId(1);
+
+        Availability av2 = new Availability();
+        av2.setDayOfWeek(DayOfWeek.THURSDAY);
+        av2.setFrom(LocalTime.of(9, 0));
+        av2.setUntil(LocalTime.of(17, 0));
+        d2.setAvailability(List.of(av2));
+
+        drones.add(d2);
+        return drones;
+    }
+
+    public ResponseEntity<String> testNoAvailableDrones() {
+        List<MedDispatchRec> deliveries = new ArrayList<>();
+
+        StringBuilder report = new StringBuilder();
+        report.append("=== NO AVAILABLE DRONES TEST ===\n\n");
+        report.append("Setup Info: TEST-1 is not available for both days of the delivery\n TEST-2 is not available for delivery 402 and the4 battery needed for 401 is greater than the battery capacity of TEST-2\n\n");
 
         try {
-            dbg.append("[4] Creating test dispatch...\n");
 
             MedDispatchRec rec = new MedDispatchRec();
-            rec.setId(101);
+            rec.setId(401);
             rec.setDate(LocalDate.of(2025, 1, 2));
             rec.setTime(LocalTime.parse("09:05"));
-
             MedDispatchRec.Requirements req = new MedDispatchRec.Requirements();
             req.setCapacity(5.0);
             req.setCooling(false);
             req.setHeating(false);
             req.setMaxCost(1000.0);
             rec.setRequirements(req);
-
             MedDispatchRec.Delivery del = new MedDispatchRec.Delivery();
             del.setLng(-3.191);
             del.setLat(55.943);
             rec.setDelivery(del);
+            deliveries.add(rec);
 
-            dbg.append("Dispatch created: dest=(")
-                    .append(del.getLng()).append(", ").append(del.getLat()).append(")\n");
+            MedDispatchRec rec2 = new MedDispatchRec();
+            rec2.setId(402);
+            rec2.setDate(LocalDate.of(2025, 1, 3));
+            rec2.setTime(LocalTime.parse("09:31"));
+            MedDispatchRec.Requirements req2 = new MedDispatchRec.Requirements();
+            req2.setCapacity(5.0);
+            rec2.setRequirements(req2);
+            MedDispatchRec.Delivery del2 = new MedDispatchRec.Delivery();
+            del2.setLng(-3.191);
+            del2.setLat(55.943);
+            rec2.setDelivery(del2);
+            deliveries.add(rec2);
 
-            List<MedDispatchRec> jobs = List.of(rec);
 
-            dbg.append("[5] Running scheduler...\n");
 
-            // PRINT BEFORE CALL
-            //dbg.append("Battery before schedule=").append(battery.getCurrentCharge()).append("\n");
 
-            EnhancedPlanResult plan = calcDeliveryPathWithScheduling(jobs,true);
+            EnhancedPlanResult plan = calcDeliveryPathWithScheduling(deliveries,createDroneForNoAvailDrones());
 
-            dbg.append("[6] Scheduler finished.\n");
 
-            // PRINT RESULT
             if (plan.missions.isEmpty()) {
-                dbg.append("✘ No missions returned!\n");
+                report.append("✘ No missions returned!\n");
             } else {
-                dbg.append("✔ Mission count: ").append(plan.missions.size()).append("\n");
+                report.append("✔ Mission count: ").append(plan.missions.size()).append("\n");
 
                 for (EnhancedDroneMission m : plan.missions) {
-                    dbg.append("  Drone ").append(m.droneId).append(":\n");
+                    report.append("  Drone ").append(m.droneId).append(":\n");
 
                     for (EnhancedDeliveryLeg leg : m.legs) {
-                        dbg.append("    Delivery=").append(leg.deliveryId).append("\n");
-                        dbg.append("    Depart=").append(leg.departureTime).append("\n");
-                        dbg.append("    Arrive=").append(leg.arrivalTime).append("\n");
-                        dbg.append("    Return=").append(leg.returnTime).append("\n");
-                        dbg.append("    BatteryUsed=").append(leg.batteryUsed).append("\n");
-                        dbg.append("    BatteryAfter=").append(leg.batteryLevelAfter).append("\n");
-                        dbg.append("    FlightSec=").append(leg.flightDurationSeconds).append("\n");
+                        report.append("    Delivery=").append(leg.deliveryId).append("\n");
+                        report.append("    Depart=").append(leg.departureTime).append("\n");
+                        report.append("    Arrive=").append(leg.arrivalTime).append("\n");
+                        report.append("    Return=").append(leg.returnTime).append("\n");
+                        report.append("    BatteryUsed=").append(leg.batteryUsed).append("\n");
+                        report.append("    BatteryAfter=").append(leg.batteryLevelAfter).append("\n");
+                        report.append("    FlightSec=").append(leg.flightDurationSeconds).append("\n");
                     }
                 }
             }
 
-            dbg.append("\n=== DEBUG END ===\n");
 
-            return ResponseEntity.ok(dbg.toString());
+            return ResponseEntity.ok(report.toString());
 
         } catch (Exception ex) {
 
-            dbg.append("\n*** EXCEPTION OCCURRED ***\n");
+            report.append("\n*** EXCEPTION OCCURRED ***\n");
             StringWriter sw = new StringWriter();
             ex.printStackTrace(new PrintWriter(sw));
-            dbg.append("\n*** EXCEPTION OCCURRED ***\n").append(sw.toString());
-            return ResponseEntity.status(500).body(dbg.toString());
+            report.append("\n*** EXCEPTION OCCURRED ***\n").append(sw.toString());
+            return ResponseEntity.status(500).body(report.toString());
         }
     }
+
+    public List<Drone> createDroneForPriority(){
+        List<Drone> drones = new ArrayList<>();
+        Drone d = new Drone();
+        d.setId("TEST-1");
+
+        Capability cap = new Capability();
+        cap.setCapacity(10.0);
+        cap.setCooling(true);
+        cap.setHeating(true);
+
+        BatteryModel bm = new BatteryModel();
+        bm.setCapacity(100.0);
+        bm.setBaseConsumptionPerStep(0.5);
+        bm.setConsumptionPayloadFactor(0.2);
+        bm.setDegradationFactor(0.1);
+        bm.setCurrentCharge(100.0);
+
+        cap.setBattery(bm);
+        cap.setCruiseSpeed(0.00015);
+
+        d.setCapability(cap);
+        d.setServicePointId(1);
+
+        Availability av = new Availability();
+        av.setDayOfWeek(DayOfWeek.WEDNESDAY);
+        av.setFrom(LocalTime.of(9, 0));
+        av.setUntil(LocalTime.of(17, 0));
+        d.setAvailability(List.of(av));
+
+        drones.add(d);
+        Drone d2 = new Drone();
+        d2.setId("TEST-2");
+
+        Capability cap2 = new Capability();
+        cap2.setCapacity(10.0);
+        cap2.setCooling(true);
+        cap2.setHeating(true);
+
+        BatteryModel bm2 = new BatteryModel();
+        bm2.setCapacity(100.0);
+        bm2.setBaseConsumptionPerStep(0.05);
+        bm2.setConsumptionPayloadFactor(0.2);
+        bm2.setDegradationFactor(0.1);
+        bm2.setCurrentCharge(100.0);
+
+        cap2.setBattery(bm2);
+        cap2.setCruiseSpeed(0.000015);
+
+        d2.setCapability(cap2);
+        d2.setServicePointId(1);
+
+        Availability av2 = new Availability();
+        av2.setDayOfWeek(DayOfWeek.WEDNESDAY);
+        av2.setFrom(LocalTime.of(9, 0));
+        av2.setUntil(LocalTime.of(17, 0));
+        d2.setAvailability(List.of(av2));
+
+        drones.add(d2);
+        return drones;
+    }
+
 
     public ResponseEntity<String> testPriorityDeliveries() {
         StringBuilder report = new StringBuilder();
         report.append("=== PRIORITY DELIVERIES TEST ===\n\n");
+        report.append("Setup Info: TEST-1 is faster but more battery consumption, TEST-2 is slower but less battery consumption\n Delivery 501 importance is false and Delivery 502 importance is true\n");
 
         List<MedDispatchRec> deliveries = new ArrayList<>();
 
         // Normal delivery (should use efficient drone)
         MedDispatchRec rec1 = new MedDispatchRec();
-        rec1.setId(301);
+        rec1.setId(501);
         rec1.setDate(LocalDate.of(2025, 1, 1));
         rec1.setTime(LocalTime.parse("09:10"));
-        rec1.setImportant(false);  // ✅ Normal priority
+        rec1.setImportant(false);
 
         MedDispatchRec.Requirements req1 = new MedDispatchRec.Requirements();
         req1.setCapacity(5.0);
@@ -4468,10 +3348,10 @@ public class DroneService {
 
         // Important delivery  (should use fastest drone)
         MedDispatchRec rec2 = new MedDispatchRec();
-        rec2.setId(302);
+        rec2.setId(502);
         rec2.setDate(LocalDate.of(2025, 1, 1));
         rec2.setTime(LocalTime.parse("10:10"));
-        rec2.setImportant(true);  // ✅ IMPORTANT!
+        rec2.setImportant(true);
 
         MedDispatchRec.Requirements req2 = new MedDispatchRec.Requirements();
         req2.setCapacity(5.0);
@@ -4484,15 +3364,7 @@ public class DroneService {
         deliveries.add(rec2);
 
 
-        report.append("SETUP:\n");
-        report.append("- Delivery 301: NORMAL priority\n");
-        report.append("- Delivery 302: IMPORTANT priority \n");
-
-        System.out.println("\n" + "=".repeat(60));
-        System.out.println("STARTING PRIORITY TEST");
-        System.out.println("=".repeat(60));
-
-        EnhancedPlanResult plan = calcDeliveryPathWithScheduling(deliveries,true);
+        EnhancedPlanResult plan = calcDeliveryPathWithScheduling(deliveries,createDroneForPriority());
 
         report.append("RESULTS:\n");
         for (EnhancedDroneMission mission : plan.missions) {
@@ -4519,6 +3391,45 @@ public class DroneService {
         }
 
         return ResponseEntity.ok(report.toString());
+    }
+
+    public List<Drone> createDroneForDeliveryPath(){
+        List<Drone> drones = new ArrayList<>();
+        Drone d = new Drone();
+        d.setId("TEST-1");
+
+        Capability cap = new Capability();
+        cap.setCapacity(10.0);
+        cap.setCooling(true);
+        cap.setHeating(true);
+
+        BatteryModel bm = new BatteryModel();
+        bm.setCapacity(100.0);
+        bm.setBaseConsumptionPerStep(0.05);
+        bm.setConsumptionPayloadFactor(0.2);
+        bm.setDegradationFactor(0.1);
+        bm.setCurrentCharge(100.0); // 0 current charge
+
+        cap.setBattery(bm);
+        cap.setCruiseSpeed(0.000015);
+
+        d.setCapability(cap);
+        d.setServicePointId(1);
+
+        Availability av = new Availability();
+        av.setDayOfWeek(DayOfWeek.WEDNESDAY);
+        av.setFrom(LocalTime.of(9, 0));
+        av.setUntil(LocalTime.of(17, 0));
+        d.setAvailability(List.of(av));
+
+        drones.add(d);
+        return drones;
+    }
+
+    public ResponseEntity<EnhancedPlanResult> testCalcDeliveryPath(List<MedDispatchRec> dispatches){
+        EnhancedPlanResult result = calcDeliveryPathWithScheduling(dispatches,createDroneForDeliveryPath());
+        return ResponseEntity.ok(result);
+
     }
 
 
