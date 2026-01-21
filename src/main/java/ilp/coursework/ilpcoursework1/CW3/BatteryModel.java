@@ -39,19 +39,5 @@ public class BatteryModel {
         this.currentCharge = currentCharge;
     }
 
-    public void discharge(double amount) {
-        this.currentCharge = Math.max(0, this.currentCharge - amount);
-    }
 
-    public void recharge(double amount) {
-        this.currentCharge = Math.min(this.capacity, this.currentCharge + amount);
-    }
-
-    public void fullyRecharge() {
-        this.currentCharge = this.capacity;
-    }
-
-    public double getChargePercent() {
-        return (currentCharge / capacity) * 100.0;
-    }
 }

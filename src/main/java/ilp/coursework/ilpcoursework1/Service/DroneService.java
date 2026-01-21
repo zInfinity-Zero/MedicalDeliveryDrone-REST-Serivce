@@ -37,8 +37,10 @@ public class DroneService {
         for (int i = 0; i < 16; i++) ALLOWED_ANGLES[i] = i * 22.5;
     }
 
-    public DroneService(ILPService ilpService, Services s, BatteryService batteryService, SchedulingService schedulingService) {
-        this.ilp = ilpService;
+
+    public DroneService(ILPService ilp, Services s, BatteryService batteryService, SchedulingService schedulingService)
+    {
+        this.ilp = ilp;
         this.s = s;
         this.batteryService = batteryService;
         this.schedulingService = schedulingService;
@@ -2290,6 +2292,7 @@ public class DroneService {
                     for (MedDispatchRec rec : unassigned.values()) {
 
                         if (!canHandle(drone, rec)) {
+                            System.out.println("      DEBUG: canHandle failed for delivery " + rec.getId());
                             continue;
                         }
 
@@ -2843,7 +2846,7 @@ public class DroneService {
         bm.setBaseConsumptionPerStep(0.05);
         bm.setConsumptionPayloadFactor(0.2);
         bm.setDegradationFactor(0.1);
-        bm.setCurrentCharge(100.0); // 0 current charge
+        bm.setCurrentCharge(100.0);
 
         cap.setBattery(bm);
         cap.setCruiseSpeed(0.000015);

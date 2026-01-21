@@ -95,6 +95,7 @@ public class Services {
         return intersectCount % 2 == 1;
     }
 
+
     private boolean rayIntersectsSegment(Position p, Position v1, Position v2) {
         double px = p.getLng();
         double py = p.getLat();

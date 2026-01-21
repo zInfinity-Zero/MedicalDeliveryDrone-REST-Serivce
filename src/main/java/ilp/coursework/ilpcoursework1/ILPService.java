@@ -24,14 +24,6 @@ public class ILPService {
         this.webClient = webClient;
     }
 
-    public List<ServicePoint> fetchServicePointsCW2() {
-        ServicePoint[] arr = webClient.get()
-                .uri("/service-points")
-                .retrieve()
-                .bodyToMono(ServicePoint[].class)
-                .block();
-        return arr == null ? List.of() : Arrays.asList(arr);
-    }
     public List<ServicePoint> fetchServicePoints() {
 
         ServicePoint[] arr = webClient.get()
@@ -47,24 +39,8 @@ public class ILPService {
         // Inject missing scheduling/recharge settings
         for (ServicePoint sp : sps) {
 
-            // === Slot limit (for queueing) ===
-            if (sp.getMaxConcurrentSlots() <= 0) {
-                sp.setMaxConcurrentSlots(2);  // default 2 drones at a time
-            }
+                sp.setRechargeRate(5.0);
 
-            // === Recharge rate (Wh per minute) ===
-            if (sp.getRechargeRate() <= 0) {
-                sp.setRechargeRate(5.0);     // default charging speed
-            }
-
-            // === Loading/unloading removed, but set 0 to be safe ===
-            if (sp.getLoadingTime() <= 0) sp.setLoadingTime(0);
-            if (sp.getUnloadingTime() <= 0) sp.setUnloadingTime(0);
-
-            // === Full recharge time only used if > 0 ===
-            if (sp.getFullRechargeTime() <= 0) {
-                sp.setFullRechargeTime(0);
-            }
         }
 
         return sps;
@@ -81,14 +57,6 @@ public class ILPService {
         return arr == null ? List.of() : Arrays.asList(arr);
     }
 
-    public List<Drone> fetchDronesCW2() {
-        Drone[] arr = webClient.get()
-                .uri("/drones")
-                .retrieve()
-                .bodyToMono(Drone[].class)
-                .block();
-        return arr == null ? List.of() : Arrays.asList(arr);
-    }
 
     public List<Drone> fetchDrones() {
 
@@ -141,36 +109,29 @@ public static class DroneAvailabilityDTO {
     public String getDayOfWeek() {
         return dayOfWeek;
     }
-    public void setDayOfWeek(String dayOfWeek) {this.dayOfWeek = dayOfWeek;}
 
     public String getFrom() {
         return from;
     }
-    public void setFrom(String from) {this.from = from;}
     public String getUntil() {return until; }
-    public void setUntil(String until) {this.until = until;}
 
 }
     public static class ServicePointDroneDTO {
         private String id;
         public String getId() {return id;}
-        public void setId(String id) {this.id = id;}
         private List<DroneAvailabilityDTO> availability;
 
         public List<DroneAvailabilityDTO> getAvailability() {return availability;}
-        public void setAvailability(List<DroneAvailabilityDTO> availability) {this.availability = availability;}
     }
     public static class ServicePointDroneListDTO {
         private int servicePointId;
         private List<ServicePointDroneDTO> drones;
 
         public int getServicePointId() {return servicePointId;}
-        public void setServicePointId(int servicePointId) {this.servicePointId = servicePointId;}
 
         public List<ServicePointDroneDTO> getDrones() {
             return drones;
         }
-        public void setDrones(List<ServicePointDroneDTO> drones) {this.drones = drones;}
     }
 
 
